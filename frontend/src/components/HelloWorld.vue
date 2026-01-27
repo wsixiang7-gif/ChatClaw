@@ -41,7 +41,7 @@ const showSettings = () => {
 }
 
 const hideSettings = () => {
-  WindowService.Hide("settings").then(() => {
+  WindowService.Close("settings").then(() => {
     settingsVisible.value = false;
   }).catch((err: Error) => console.log(err));
 }

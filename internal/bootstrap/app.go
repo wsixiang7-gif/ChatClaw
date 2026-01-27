@@ -16,15 +16,13 @@ type Options struct {
 }
 
 func NewApp(opts Options) (*application.App, error) {
-	// 创建实例的时候立即注册的服务
-	services := []application.Service{
-		application.NewService(greet.NewGreetService("Hello, ")),
-	}
-
+	// 创建应用实例
 	app := application.New(application.Options{
 		Name:        "WillChat",
 		Description: "WillChat Desktop App",
-		Services:    services,
+		Services: []application.Service{
+			application.NewService(greet.NewGreetService("Hello, ")),
+		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(opts.Assets),
 		},
@@ -33,17 +31,17 @@ func NewApp(opts Options) (*application.App, error) {
 		},
 	})
 
-	// 主窗口：启动即创建
+	// 创建主窗口
 	mainWindow := windows.NewMainWindow(app)
 
-	// 子窗口服务：按需创建，Hide=Destroy
+	// 创建子窗口服务
 	windowService, err := windows.NewWindowService(app, windows.DefaultDefinitions())
 	if err != nil {
 		return nil, fmt.Errorf("init window service: %w", err)
 	}
 	app.RegisterService(application.NewService(windowService))
 
-	// 系统托盘
+	// 创建系统托盘
 	systrayMenu := app.NewMenu()
 	systrayMenu.Add("Show").OnClick(func(ctx *application.Context) {
 		mainWindow.Show()

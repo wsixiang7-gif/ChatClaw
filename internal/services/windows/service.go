@@ -22,23 +22,18 @@ type WindowInfo struct {
 }
 
 type WindowDefinition struct {
-	// Name 必须唯一，用于前端控制/设置项映射
 	Name string
 	CreateOptions func() application.WebviewWindowOptions
 	FocusOnShow bool
 }
 
-// WindowService 暴露给前端的多窗口控制 API
-// 前端通过 bindings 调用（例如 WindowService.Show("settings")）
 type WindowService struct {
 	app *application.App
-	mu      sync.RWMutex
+	mu sync.RWMutex
 	defs    map[string]WindowDefinition
 	windows map[string]*application.WebviewWindow
 }
 
-// NewWindowService 只管理“子窗口”（主窗口不在此服务内）。
-// 约定：子窗口按需创建，Hide = Close = 销毁，避免窗口越开越多导致内存持续增长。
 func NewWindowService(app *application.App, defs []WindowDefinition) (*WindowService, error) {
 	if app == nil {
 		return nil, errors.New("app is required")
@@ -106,32 +101,34 @@ func (s *WindowService) ensure(name string) (*application.WebviewWindow, error) 
 	return w, nil
 }
 
-func (s *WindowService) get(name string) (*application.WebviewWindow, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	w := s.windows[name]
-	return w, w != nil
-}
-
 func (s *WindowService) List() []WindowInfo {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	type item struct {
+		name string
+		def  WindowDefinition
+		w    *application.WebviewWindow
+	}
 
-	result := make([]WindowInfo, 0, len(s.defs))
+	s.mu.RLock()
+	items := make([]item, 0, len(s.defs))
 	for name, def := range s.defs {
+		items = append(items, item{name: name, def: def, w: s.windows[name]})
+	}
+	s.mu.RUnlock()
+
+	result := make([]WindowInfo, 0, len(items))
+	for _, it := range items {
 		info := WindowInfo{
-			Name:    name,
-			Created: s.windows[name] != nil,
+			Name:    it.name,
+			Created: it.w != nil,
 			Visible: false,
 		}
 
-		// 从定义里拿 Title/URL（比从窗口实例拿更稳定，且未创建时也能展示）
-		opts := def.CreateOptions()
+		opts := it.def.CreateOptions()
 		info.Title = opts.Title
 		info.URL = opts.URL
 
-		if w := s.windows[name]; w != nil {
-			info.Visible = w.IsVisible()
+		if it.w != nil {
+			info.Visible = it.w.IsVisible()
 		}
 		result = append(result, info)
 	}
@@ -157,43 +154,33 @@ func (s *WindowService) Show(name string) error {
 	return nil
 }
 
-func (s *WindowService) Hide(name string) error {
-	// 约定：子窗口 Hide 即销毁（释放资源）
-	return s.Close(name)
-}
-
 func (s *WindowService) Close(name string) error {
-	s.mu.RLock()
+	s.mu.Lock()
 	_, registered := s.defs[name]
-	s.mu.RUnlock()
+	w := s.windows[name]
+	delete(s.windows, name)
+	s.mu.Unlock()
 	if !registered {
 		return fmt.Errorf("window '%s' not registered", name)
 	}
-
-	w, ok := s.get(name)
-	if !ok {
+	if w == nil {
 		return nil
 	}
-	// 先移除缓存，避免 Close 过程中再次被并发访问拿到旧指针
-	s.mu.Lock()
-	delete(s.windows, name)
-	s.mu.Unlock()
 
 	w.Close()
 	return nil
 }
 
 func (s *WindowService) IsVisible(name string) (bool, error) {
-	// 未创建直接返回 false
-	w, ok := s.get(name)
-	if !ok {
-		// 若未注册，返回错误，便于前端发现拼写问题
-		s.mu.RLock()
-		_, registered := s.defs[name]
-		s.mu.RUnlock()
-		if !registered {
-			return false, fmt.Errorf("window '%s' not registered", name)
-		}
+	s.mu.RLock()
+	_, registered := s.defs[name]
+	w := s.windows[name]
+	s.mu.RUnlock()
+
+	if !registered {
+		return false, fmt.Errorf("window '%s' not registered", name)
+	}
+	if w == nil {
 		return false, nil
 	}
 	return w.IsVisible(), nil
@@ -206,7 +193,7 @@ func (s *WindowService) SetVisible(name string, visible bool) (bool, error) {
 		}
 		return true, nil
 	}
-	if err := s.Hide(name); err != nil {
+	if err := s.Close(name); err != nil {
 		return false, err
 	}
 	return false, nil

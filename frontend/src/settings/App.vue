@@ -17,7 +17,7 @@ const refresh = async () => {
 };
 
 const hideSelf = async () => {
-  await WindowService.Hide("settings");
+  await WindowService.Close("settings");
 };
 
 onMounted(() => {
