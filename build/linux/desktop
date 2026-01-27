@@ -1,13 +1,13 @@
 [Desktop Entry]
 Version=1.0
-Name=My Product
-Comment=A WillChat application
+Name=WillChat
+Comment=WillChat
 # The Exec line includes %u to pass the URL to the application
-Exec=/usr/local/bin/willchat %u
+Exec=/usr/local/bin/WillChat %u
 Terminal=false
 Type=Application
-Icon=willchat
+Icon=WillChat
 Categories=Utility;
-StartupWMClass=willchat
+StartupWMClass=WillChat
 
  

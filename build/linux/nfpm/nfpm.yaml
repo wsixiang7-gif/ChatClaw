@@ -3,26 +3,26 @@
 #
 # The lines below are called `modelines`. See `:help modeline`
 
-name: "willchat"
+name: "WillChat"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.0"
+version: "0.0.1"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "A WillChat application"
-vendor: "My Company"
+description: "WillChat"
+vendor: "sesame"
 homepage: "https://wails.io"
 license: "MIT"
 release: "1"
 
 contents:
-  - src: "./bin/willchat"
-    dst: "/usr/local/bin/willchat"
+  - src: "./bin/WillChat"
+    dst: "/usr/local/bin/WillChat"
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/willchat.png"
-  - src: "./build/linux/willchat.desktop"
-    dst: "/usr/share/applications/willchat.desktop"
+    dst: "/usr/share/icons/hicolor/128x128/apps/WillChat.png"
+  - src: "./build/linux/WillChat.desktop"
+    dst: "/usr/share/applications/WillChat.desktop"
 
 # Default dependencies for Debian 12/Ubuntu 22.04+ with WebKit 4.1
 depends:

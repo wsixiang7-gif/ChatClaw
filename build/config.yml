@@ -5,7 +5,7 @@ version: '3'
 
 # This information is used to generate the build assets.
 info:
-  companyName: "Wuhan Sesame Small Customer Service Network Technology Co., Ltd" # The name of the company
+  companyName: "sesame" # The name of the company
   productName: "WillChat" # The name of the application
   productIdentifier: "com.sesame.willchat" # The unique product identifier
   description: "WillChat" # The application description

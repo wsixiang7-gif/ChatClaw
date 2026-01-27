@@ -1,11 +1,11 @@
 {
 	"fixed": {
-		"file_version": "0.1.0"
+		"file_version": "0.0.1"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.1.0",
-			"CompanyName": "Wuhan Sesame Small Customer Service Network Technology Co., Ltd",
+			"ProductVersion": "0.0.1",
+			"CompanyName": "sesame",
 			"FileDescription": "WillChat",
 			"LegalCopyright": "Copyright © 2016- 2026 Wuhan Sesame Small Customer Service Network Technology Co., Ltd.",
 			"ProductName": "WillChat",
