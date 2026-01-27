@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	WindowMain     = "main"
 	WindowSettings = "settings"
 )
 
@@ -25,32 +24,22 @@ type WindowInfo struct {
 type WindowDefinition struct {
 	// Name 必须唯一，用于前端控制/设置项映射
 	Name string
-
-	// CreateOptions 用于生成该窗口的创建参数（支持后续做更复杂的窗口配置）
 	CreateOptions func() application.WebviewWindowOptions
-
-	// FocusOnShow 为 true 时，Show 后会自动 Focus
 	FocusOnShow bool
-}
-
-type WindowServiceOptions struct {
-	Definitions []WindowDefinition
-
-	// 用于应用启动时预创建的窗口 Name 列表
-	Precreate []string
 }
 
 // WindowService 暴露给前端的多窗口控制 API
 // 前端通过 bindings 调用（例如 WindowService.Show("settings")）
 type WindowService struct {
 	app *application.App
-
 	mu      sync.RWMutex
 	defs    map[string]WindowDefinition
 	windows map[string]*application.WebviewWindow
 }
 
-func NewWindowService(app *application.App, opts WindowServiceOptions) (*WindowService, error) {
+// NewWindowService 只管理“子窗口”（主窗口不在此服务内）。
+// 约定：子窗口按需创建，Hide = Close = 销毁，避免窗口越开越多导致内存持续增长。
+func NewWindowService(app *application.App, defs []WindowDefinition) (*WindowService, error) {
 	if app == nil {
 		return nil, errors.New("app is required")
 	}
@@ -59,13 +48,8 @@ func NewWindowService(app *application.App, opts WindowServiceOptions) (*WindowS
 		defs:    make(map[string]WindowDefinition),
 		windows: make(map[string]*application.WebviewWindow),
 	}
-	for _, def := range opts.Definitions {
+	for _, def := range defs {
 		if err := s.register(def); err != nil {
-			return nil, err
-		}
-	}
-	for _, name := range opts.Precreate {
-		if _, err := s.ensure(name); err != nil {
 			return nil, err
 		}
 	}
@@ -109,8 +93,6 @@ func (s *WindowService) ensure(name string) (*application.WebviewWindow, error) 
 
 	w := s.app.Window.NewWithOptions(options)
 
-	// 窗口被 Close 时会从 Wails 的 WindowManager 中移除，但我们这里也需要清理缓存，
-	// 否则下次 Show/ensure 会拿到“已 destroyed”的旧指针（无法复用）。
 	w.OnWindowEvent(events.Common.WindowClosing, func(_ *application.WindowEvent) {
 		s.mu.Lock()
 		delete(s.windows, name)
@@ -176,16 +158,18 @@ func (s *WindowService) Show(name string) error {
 }
 
 func (s *WindowService) Hide(name string) error {
-	// 不存在则直接返回 nil，便于前端“幂等隐藏”
-	w, ok := s.get(name)
-	if !ok {
-		return nil
-	}
-	w.Hide()
-	return nil
+	// 约定：子窗口 Hide 即销毁（释放资源）
+	return s.Close(name)
 }
 
 func (s *WindowService) Close(name string) error {
+	s.mu.RLock()
+	_, registered := s.defs[name]
+	s.mu.RUnlock()
+	if !registered {
+		return fmt.Errorf("window '%s' not registered", name)
+	}
+
 	w, ok := s.get(name)
 	if !ok {
 		return nil

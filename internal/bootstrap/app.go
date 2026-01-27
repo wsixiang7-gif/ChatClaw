@@ -33,13 +33,11 @@ func NewApp(opts Options) (*application.App, error) {
 		},
 	})
 
-	// 创建实例后才能注册的服务
-	windowService, err := windows.NewWindowService(app, windows.WindowServiceOptions{
-		Definitions: windows.DefaultDefinitions(),
-		Precreate: []string{
-			windows.WindowMain,
-		},
-	})
+	// 主窗口：启动即创建
+	mainWindow := windows.NewMainWindow(app)
+
+	// 子窗口服务：按需创建，Hide=Destroy
+	windowService, err := windows.NewWindowService(app, windows.DefaultDefinitions())
 	if err != nil {
 		return nil, fmt.Errorf("init window service: %w", err)
 	}
@@ -48,7 +46,8 @@ func NewApp(opts Options) (*application.App, error) {
 	// 系统托盘
 	systrayMenu := app.NewMenu()
 	systrayMenu.Add("Show").OnClick(func(ctx *application.Context) {
-		_ = windowService.Show(windows.WindowMain)
+		mainWindow.Show()
+		mainWindow.Focus()
 	})
 	systrayMenu.Add("Quit").OnClick(func(ctx *application.Context) {
 		app.Quit()
