@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { WindowService } from "../wails";
+
+const { t } = useI18n();
 
 type WindowInfo = {
   name: string;
@@ -27,17 +30,17 @@ onMounted(() => {
 
 <template>
   <div style="padding: 16px">
-    <h2>设置</h2>
+    <h2>{{ t('settings.title') }}</h2>
 
     <div class="card" style="margin: 12px 0">
       <div style="display: flex; gap: 8px; flex-wrap: wrap">
-        <button class="btn" @click="refresh">刷新窗口列表</button>
-        <button class="btn" @click="hideSelf">隐藏设置窗口</button>
+        <button class="btn" @click="refresh">{{ t('settings.refreshWindows') }}</button>
+        <button class="btn" @click="hideSelf">{{ t('settings.hideSettings') }}</button>
       </div>
     </div>
 
     <div class="card">
-      <div style="font-weight: 600; margin-bottom: 8px">窗口状态</div>
+      <div style="font-weight: 600; margin-bottom: 8px">{{ t('settings.windowStatus') }}</div>
       <pre style="white-space: pre-wrap; margin: 0">{{ windows }}</pre>
     </div>
   </div>

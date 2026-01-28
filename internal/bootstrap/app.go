@@ -5,6 +5,7 @@ import (
 	"io/fs"
 
 	"changeme/internal/services/greet"
+	"changeme/internal/services/i18n"
 	"changeme/internal/services/windows"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -13,15 +14,20 @@ import (
 type Options struct {
 	Assets fs.FS
 	Icon   []byte
+	Locale string // 语言设置: "zh-CN" 或 "en-US"
 }
 
 func NewApp(opts Options) (*application.App, error) {
+	// 创建多语言服务
+	i18nService := i18n.NewService(opts.Locale)
+
 	// 创建应用实例
 	app := application.New(application.Options{
 		Name:        "WillChat",
 		Description: "WillChat Desktop App",
 		Services: []application.Service{
 			application.NewService(greet.NewGreetService("Hello, ")),
+			application.NewService(i18nService),
 		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(opts.Assets),
@@ -43,11 +49,11 @@ func NewApp(opts Options) (*application.App, error) {
 
 	// 创建系统托盘
 	systrayMenu := app.NewMenu()
-	systrayMenu.Add("Show").OnClick(func(ctx *application.Context) {
+	systrayMenu.Add(i18nService.T("systray.show")).OnClick(func(ctx *application.Context) {
 		mainWindow.Show()
 		mainWindow.Focus()
 	})
-	systrayMenu.Add("Quit").OnClick(func(ctx *application.Context) {
+	systrayMenu.Add(i18nService.T("systray.quit")).OnClick(func(ctx *application.Context) {
 		app.Quit()
 	})
 	app.SystemTray.New().SetIcon(opts.Icon).SetMenu(systrayMenu)
