@@ -1,10 +1,5 @@
 package sqlite
 
-/*
-#cgo CFLAGS: -DSQLITE_ENABLE_FTS5
-*/
-import "C"
-
 import (
 	"context"
 	"database/sql"
@@ -16,17 +11,13 @@ import (
 	"willchat/internal/define"
 	"willchat/internal/sqlite/migrations"
 
-	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/asg017/sqlite-vec-go-bindings/ncruces"
+	_ "github.com/ncruces/go-sqlite3/driver"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/sqlitedialect"
 	"github.com/uptrace/bun/migrate"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
-
-func init() {
-	sqlite_vec.Auto()
-}
 
 var (
 	once   sync.Once

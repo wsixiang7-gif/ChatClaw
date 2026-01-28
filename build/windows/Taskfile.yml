@@ -24,8 +24,8 @@ tasks:
           ARCH: '{{.ARCH}}'
           DEV: '{{.DEV}}'
     vars:
-      # CGO is required for sqlite-vec
-      CGO_ENABLED: '{{.CGO_ENABLED | default "1"}}'
+      # WASM version doesn't need CGO
+      CGO_ENABLED: '{{.CGO_ENABLED | default "0"}}'
 
   build:native:
     summary: Builds the application using native Go cross-compilation
@@ -47,10 +47,10 @@ tasks:
       - cmd: rm -f *.syso
         platforms: [linux, darwin]
     vars:
-      BUILD_FLAGS: '{{if eq .DEV "true"}}-tags fts5 -buildvcs=false -gcflags=all="-l"{{else}}-tags "production fts5" -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui"{{end}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui"{{end}}'
     env:
       GOOS: windows
-      CGO_ENABLED: '{{.CGO_ENABLED | default "1"}}'
+      CGO_ENABLED: '{{.CGO_ENABLED | default "0"}}'
       GOARCH: '{{.ARCH | default ARCH}}'
 
   build:docker:
