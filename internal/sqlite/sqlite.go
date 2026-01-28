@@ -132,5 +132,5 @@ func resolveDBPath() (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, define.DefaultDBFileName), nil
+	return filepath.Join(dir, define.DefaultSQLiteFileName), nil
 }

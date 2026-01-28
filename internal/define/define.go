@@ -6,6 +6,6 @@ const AppID = "willchat"
 // AppDisplayName 用于 UI 展示
 const AppDisplayName = "WillChat"
 
-// DefaultDBFileName 默认 sqlite 文件名。
-const DefaultDBFileName = AppID + ".sqlite"
+// DefaultSQLiteFileName 默认 SQLite 数据库文件名
+const DefaultSQLiteFileName = "data.sqlite"
 
