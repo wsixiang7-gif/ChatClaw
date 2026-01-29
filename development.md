@@ -2,44 +2,59 @@
 
 ## 开发
 
+```bash
 wails3 dev
+```
 
-## windows 打包
+## 构建开发环境客户端（development）
 
+构建 development 版本：
+
+```bash
+wails3 build DEV=true
+```
+
+## 构建生产环境客户端（production）
+
+构建 production 版本：
+
+```bash
 wails3 build
+```
 
-会生成二进制文件到 bin 目录，然后可以执行手动签名
+打包：
 
-## windows 分发
+```bash
+wails3 package
+```
 
-wails3 pacakge 
+## Windows 多架构打包（production）
 
-会生成安装包，对安装包也进行一次签名，即可分发
+```bash
+# amd64
+wails3 task windows:build ARCH=amd64
+wails3 task windows:package ARCH=amd64
 
-## MacOS 打包
+# arm64
+wails3 task windows:build ARCH=arm64
+wails3 task windows:package ARCH=arm64
+```
 
-### 打包arm64
+## macOS 多架构打包（production）
 
+```bash
+# arm64 / amd64
 wails3 task package ARCH=arm64
-
-### 打包amd64
-
 wails3 task package ARCH=amd64
 
-### 打包通用二进制
-
+# universal（二进制 + .app）
 wails3 task darwin:package:universal
+```
 
-## MacOS 分发
+## macOS 生成 DMG（production）
 
-### 分发arm64
-
+```bash
 wails3 task darwin:create:dmg ARCH=arm64
-
-### 分发amd64
-
 wails3 task darwin:create:dmg ARCH=amd64
-
-### 分发通用二进制
-
 wails3 task darwin:create:dmg UNIVERSAL=true
+```

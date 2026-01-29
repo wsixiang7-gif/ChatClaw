@@ -9,3 +9,14 @@ const AppDisplayName = "WillChat"
 // DefaultSQLiteFileName 默认 SQLite 数据库文件名
 const DefaultSQLiteFileName = "data.sqlite"
 
+// Env / ServerURL 的默认值由编译 tag 决定（见 env_dev.go / env_prod.go）
+
+// IsDev 是否为开发环境
+func IsDev() bool {
+	return Env == "development"
+}
+
+// IsProd 是否为生产环境
+func IsProd() bool {
+	return Env == "production"
+}
