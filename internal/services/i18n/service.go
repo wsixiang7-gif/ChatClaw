@@ -3,8 +3,10 @@ package i18n
 import (
 	"embed"
 	"encoding/json"
+	"strings"
 	"sync"
 
+	"github.com/jeandeaual/go-locale"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"golang.org/x/text/language"
 )
@@ -59,6 +61,26 @@ func (s *Service) SetLocale(locale string) {
 
 var currentLocale = LocaleZhCN
 
+// DetectLocale 检测系统语言，返回支持的语言代码
+func DetectLocale() string {
+	lang, err := locale.GetLanguage()
+	if err != nil {
+		return LocaleZhCN
+	}
+
+	// 系统语言可能是 "zh"、"zh-CN"、"zh_CN"、"zh-Hans" 等格式
+	lang = strings.ToLower(lang)
+	if strings.HasPrefix(lang, "zh") {
+		return LocaleZhCN
+	}
+	if strings.HasPrefix(lang, "en") {
+		return LocaleEnUS
+	}
+
+	// 不支持的语言默认使用中文
+	return LocaleZhCN
+}
+
 // GetLocale 获取当前语言
 func GetLocale() string {
 	mu.RLock()
@@ -66,12 +88,14 @@ func GetLocale() string {
 	return currentLocale
 }
 
-// SetLocale 设置语言
+// SetLocale 设置语言（空字符串时自动检测系统语言）
 func SetLocale(locale string) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	if locale != LocaleZhCN && locale != LocaleEnUS {
+	if locale == "" {
+		locale = DetectLocale()
+	} else if locale != LocaleZhCN && locale != LocaleEnUS {
 		locale = LocaleZhCN
 	}
 	currentLocale = locale
