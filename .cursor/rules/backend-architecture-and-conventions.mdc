@@ -1,9 +1,7 @@
 ---
 description: WillChat 后端（Go/Wails）基础架构与开发规范
-globs: **/*.go
 alwaysApply: false
 ---
-
 # 后端基础架构与开发规范（Go/Wails）
 
 ## 架构概览
