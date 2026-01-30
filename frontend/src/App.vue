@@ -3,6 +3,7 @@ import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { MainLayout } from '@/components/layout'
 import { useNavigationStore } from '@/stores'
+import SettingsPage from '@/settings/SettingsPage.vue'
 
 const { t } = useI18n()
 const navigationStore = useNavigationStore()
@@ -11,6 +12,11 @@ const navigationStore = useNavigationStore()
  * 当前激活的标签页
  */
 const activeTab = computed(() => navigationStore.activeTab)
+
+/**
+ * 是否显示设置页面
+ */
+const showSettings = computed(() => activeTab.value?.module === 'settings')
 
 /**
  * 默认至少保持 1 个标签页：
@@ -30,8 +36,11 @@ watch(
 
 <template>
   <MainLayout>
+    <!-- 设置页面 -->
+    <SettingsPage v-if="showSettings" />
+
     <!-- 主内容区域 - 显示当前模块的占位内容 -->
-    <div class="flex h-full w-full items-center justify-center bg-background">
+    <div v-else class="flex h-full w-full items-center justify-center bg-background">
       <div class="flex flex-col items-center gap-4">
         <!-- 显示当前标签页标题，如果没有标签页则显示提示 -->
         <template v-if="activeTab">
