@@ -7,6 +7,7 @@ import SettingsItem from './SettingsItem.vue'
 
 // 后端绑定
 import { SettingsService, Category } from '@bindings/willchat/internal/services/settings'
+import { TrayService } from '@bindings/willchat/internal/services/tray'
 
 const { t } = useI18n()
 
@@ -55,9 +56,16 @@ const updateSetting = async (key: string, value: string) => {
 }
 
 // 处理托盘图标开关变化
-const handleTrayIconChange = (val: boolean) => {
+const handleTrayIconChange = async (val: boolean) => {
   showTrayIcon.value = val
   void updateSetting('show_tray_icon', String(val))
+
+  // 立即更新托盘图标可见性
+  try {
+    await TrayService.SetVisible(val)
+  } catch (error) {
+    console.error('Failed to update tray visibility:', error)
+  }
 }
 
 // 处理最小化到托盘开关变化

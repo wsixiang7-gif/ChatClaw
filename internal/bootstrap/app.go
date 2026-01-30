@@ -9,9 +9,11 @@ import (
 	"willchat/internal/services/greet"
 	"willchat/internal/services/i18n"
 	"willchat/internal/services/settings"
+	"willchat/internal/services/tray"
 	"willchat/internal/services/windows"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 type Options struct {
@@ -36,7 +38,8 @@ func NewApp(opts Options) (*application.App, error) {
 			Handler: application.AssetFileServerFS(opts.Assets),
 		},
 		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
+			// 设置为 false，允许应用在窗口隐藏到托盘后继续运行
+			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 	})
 
@@ -68,7 +71,32 @@ func NewApp(opts Options) (*application.App, error) {
 	systrayMenu.Add(i18n.T("systray.quit")).OnClick(func(ctx *application.Context) {
 		app.Quit()
 	})
-	app.SystemTray.New().SetIcon(opts.Icon).SetMenu(systrayMenu)
+	systray := app.SystemTray.New().SetIcon(opts.Icon).SetMenu(systrayMenu)
+
+	// 创建托盘服务
+	trayService := tray.NewTrayService(app, systray)
+	app.RegisterService(application.NewService(trayService))
+
+	// 监听主窗口关闭事件，实现"关闭时最小化到托盘"
+	mainWindow.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		minimizeEnabled := trayService.IsMinimizeToTrayEnabled()
+		trayEnabled := trayService.IsTrayIconEnabled()
+		if minimizeEnabled && trayEnabled {
+			app.Logger.Info("WindowClosing: hiding window to tray")
+			mainWindow.Hide()
+			e.Cancel()
+		} else {
+			app.Logger.Info("WindowClosing: quitting application", "minimizeEnabled", minimizeEnabled, "trayEnabled", trayEnabled)
+			app.Quit()
+		}
+	})
+
+	// 点击 Dock 图标时显示窗口
+	app.Event.OnApplicationEvent(events.Mac.ApplicationShouldHandleReopen, func(event *application.ApplicationEvent) {
+		mainWindow.UnMinimise()
+		mainWindow.Show()
+		mainWindow.Focus()
+	})
 
 	return app, nil
 }
