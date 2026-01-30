@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"fmt"
 	"io/fs"
-	"runtime"
 
 	appservice "willchat/internal/services/app"
 	"willchat/internal/services/browser"
@@ -63,7 +62,7 @@ func NewApp(opts Options) (*application.App, error) {
 	}
 	app.RegisterService(application.NewService(windowService))
 
-	// 创建系统托盘（保持与官方 demo 一致）
+	// 创建系统托盘
 	systrayMenu := app.NewMenu()
 	systrayMenu.Add(i18n.T("systray.show")).OnClick(func(ctx *application.Context) {
 		mainWindow.Show()
@@ -73,17 +72,6 @@ func NewApp(opts Options) (*application.App, error) {
 		app.Quit()
 	})
 	systray := app.SystemTray.New().SetIcon(opts.Icon).SetMenu(systrayMenu)
-	if runtime.GOOS == "darwin" {
-		// 为了排查“托盘完全不出现”，这里强制设置 label。
-		// 若打包后仍完全不可见，则说明托盘创建链路未执行/被系统隐藏。
-		systray.SetLabel("WillChat")
-		// Force label-only on macOS so it can't be "icon invisible".
-		systray.SetIconPosition(application.NSImageNone)
-		// Ensure visible after launch
-		app.Event.OnApplicationEvent(events.Mac.ApplicationDidFinishLaunching, func(_ *application.ApplicationEvent) {
-			systray.Show()
-		})
-	}
 
 	// 创建托盘服务（用于前端动态控制 show/hide + 缓存关闭策略）
 	trayService := tray.NewTrayService(app, systray)
@@ -93,16 +81,14 @@ func NewApp(opts Options) (*application.App, error) {
 		trayService.InitFromSettings()
 	})
 
-	// 监听主窗口关闭事件，实现"关闭时最小化到托盘"
+	// 监听主窗口关闭事件，实现"关闭时最小化"
 	mainWindow.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		minimizeEnabled := trayService.IsMinimizeToTrayEnabled()
-		trayEnabled := trayService.IsTrayIconEnabled()
-		if minimizeEnabled && trayEnabled {
+		if minimizeEnabled {
 			app.Logger.Info("WindowClosing: hiding window to tray")
 			mainWindow.Hide()
 			e.Cancel()
 		} else {
-			app.Logger.Info("WindowClosing: quitting application", "minimizeEnabled", minimizeEnabled, "trayEnabled", trayEnabled)
 			app.Quit()
 		}
 	})
@@ -113,10 +99,6 @@ func NewApp(opts Options) (*application.App, error) {
 		mainWindow.Show()
 		mainWindow.Focus()
 	})
-
-	// 与官方示例保持一致：显式显示主窗口
-	//（一些 macOS 场景下，未显式 Show 可能导致托盘/菜单相关初始化不稳定）
-	mainWindow.Show()
 
 	return app, nil
 }

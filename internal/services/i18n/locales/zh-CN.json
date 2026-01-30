@@ -7,6 +7,7 @@
   "error.sqlite_not_initialized": "数据库尚未初始化",
   "error.setting_key_required": "缺少设置项 key",
   "error.setting_not_found": "未找到设置项「{{.Key}}」",
+  "error.setting_cache_not_initialized": "设置缓存尚未初始化",
   "error.setting_read_failed": "读取设置失败",
   "error.setting_write_failed": "写入设置失败",
   "error.window_name_required": "缺少窗口名称",

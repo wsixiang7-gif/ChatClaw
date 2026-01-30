@@ -7,6 +7,7 @@
   "error.sqlite_not_initialized": "database is not initialized",
   "error.setting_key_required": "setting key is required",
   "error.setting_not_found": "setting '{{.Key}}' not found",
+  "error.setting_cache_not_initialized": "settings cache is not initialized",
   "error.setting_read_failed": "failed to read settings",
   "error.setting_write_failed": "failed to write settings",
   "error.window_name_required": "window name is required",
