@@ -87,5 +87,13 @@ export default {
       dark: '深色',
       system: '跟随系统',
     },
+    // 关于我们
+    about: {
+      title: '关于我们',
+      appName: 'WillChat',
+      copyright: '© 2026 WillChat Sesame Network Technology  版权所有',
+      officialWebsite: '官方网站',
+      view: '查看',
+    },
   },
 }

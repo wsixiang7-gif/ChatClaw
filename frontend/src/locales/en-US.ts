@@ -87,5 +87,13 @@ export default {
       dark: 'Dark',
       system: 'System',
     },
+    // About Us
+    about: {
+      title: 'About Us',
+      appName: 'WillChat',
+      copyright: '© 2026 WillChat Sesame Network Technology  All rights reserved',
+      officialWebsite: 'Official Website',
+      view: 'View',
+    },
   },
 }

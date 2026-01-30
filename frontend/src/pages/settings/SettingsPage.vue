@@ -10,6 +10,7 @@ import SettingsSidebar from './components/SettingsSidebar.vue'
 import GeneralSettings from './components/GeneralSettings.vue'
 import SnapSettings from './components/SnapSettings.vue'
 import ToolsSettings from './components/ToolsSettings.vue'
+import AboutSettings from './components/AboutSettings.vue'
 import { useSettingsStore, type SettingsMenuItem } from '@/stores'
 
 const { t } = useI18n()
@@ -30,7 +31,7 @@ const menuComponents: Record<SettingsMenuItem, Component | null> = {
   generalSettings: GeneralSettings,
   snapSettings: SnapSettings,
   tools: ToolsSettings,
-  about: null,
+  about: AboutSettings,
 }
 
 // 获取当前菜单的翻译文本

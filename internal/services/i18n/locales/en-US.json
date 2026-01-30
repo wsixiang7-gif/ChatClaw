@@ -12,5 +12,7 @@
   "error.window_name_required": "window name is required",
   "error.window_create_options_required": "window '{{.Name}}' CreateOptions is required",
   "error.window_already_registered": "window '{{.Name}}' already registered",
-  "error.window_not_registered": "window '{{.Name}}' not registered"
+  "error.window_not_registered": "window '{{.Name}}' not registered",
+  "error.browser_url_required": "URL is required",
+  "error.browser_open_failed": "failed to open browser"
 }
