@@ -12,5 +12,12 @@
   "error.window_name_required": "window name is required",
   "error.window_create_options_required": "window '{{.Name}}' CreateOptions is required",
   "error.window_already_registered": "window '{{.Name}}' already registered",
-  "error.window_not_registered": "window '{{.Name}}' not registered"
+  "error.window_not_registered": "window '{{.Name}}' not registered",
+
+  "error.provider_id_required": "provider ID is required",
+  "error.provider_not_found": "provider '{{.ProviderID}}' not found",
+  "error.provider_list_failed": "failed to list providers",
+  "error.provider_read_failed": "failed to read provider",
+  "error.provider_update_failed": "failed to update provider",
+  "error.model_list_failed": "failed to list models"
 }

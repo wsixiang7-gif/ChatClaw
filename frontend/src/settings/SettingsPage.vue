@@ -8,6 +8,7 @@ import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import SettingsSidebar from './components/SettingsSidebar.vue'
 import GeneralSettings from './components/GeneralSettings.vue'
+import ModelServiceSettings from './components/ModelServiceSettings.vue'
 import { useSettingsStore, type SettingsMenuItem } from './stores/settings'
 
 const { t } = useI18n()
@@ -24,12 +25,15 @@ const menuLabelKeys: Record<SettingsMenuItem, string> = {
 
 // 菜单项对应的内容组件（null 表示尚未实现）
 const menuComponents: Record<SettingsMenuItem, Component | null> = {
-  modelService: null,
+  modelService: ModelServiceSettings,
   generalSettings: GeneralSettings,
   snapSettings: null,
   tools: null,
   about: null,
 }
+
+// 是否为全宽组件（不需要居中包装）
+const isFullWidthComponent = computed(() => settingsStore.activeMenu === 'modelService')
 
 // 获取当前菜单的翻译文本
 const activeMenuLabel = computed(() => t(menuLabelKeys[settingsStore.activeMenu]))
@@ -44,7 +48,10 @@ const currentComponent = computed(() => menuComponents[settingsStore.activeMenu]
     <SettingsSidebar />
 
     <!-- 内容区域 -->
-    <main class="flex flex-1 flex-col items-center overflow-auto py-8">
+    <main
+      class="flex flex-1 flex-col overflow-auto"
+      :class="!isFullWidthComponent && 'items-center py-8'"
+    >
       <component :is="currentComponent" v-if="currentComponent" />
       <!-- 占位内容：当其他菜单页面还没实现时显示 -->
       <div

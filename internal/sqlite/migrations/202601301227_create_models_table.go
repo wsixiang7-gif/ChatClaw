@@ -77,21 +77,27 @@ insert into providers (provider_id, name, type, icon, is_builtin, sort_order, ap
 			// 初始化内置模型
 			insertModels := `
 insert into models (provider_id, model_id, name, type, is_builtin, sort_order) values
-('openai', 'gpt-4o', 'GPT-4o', 'llm', true, 1),
-('openai', 'gpt-4o-mini', 'GPT-4o Mini', 'llm', true, 2),
-('openai', 'gpt-4-turbo', 'GPT-4 Turbo', 'llm', true, 3),
-('openai', 'o1', 'o1', 'llm', true, 4),
-('openai', 'o1-mini', 'o1 Mini', 'llm', true, 5),
-('openai', 'text-embedding-3-small', 'Text Embedding 3 Small', 'embedding', true, 10),
-('openai', 'text-embedding-3-large', 'Text Embedding 3 Large', 'embedding', true, 11),
+('openai', 'gpt-5.2', 'GPT-5.2', 'llm', true, 1),
+('openai', 'gpt-5.1', 'GPT-5.1', 'llm', true, 2),
+('openai', 'gpt-5', 'GPT-5', 'llm', true, 3),
+('openai', 'gpt-5 mini', 'GPT-5 mini, 'llm', true, 4),
+('openai', 'gpt-5.2 nano', 'GPT-5.2 nano', 'llm', true, 5),
+('openai', 'gpt-5.2 pro', 'GPT-5.2 pro', 'llm', true, 6),
+
+('openai', 'text-embedding-3-large', 'Text Embedding 3 Large', 'embedding', true, 1),
+('openai', 'text-embedding-3-small', 'Text Embedding 3 Small', 'embedding', true, 2),
+
 ('anthropic', 'claude-sonnet-4-20250514', 'Claude Sonnet 4', 'llm', true, 1),
 ('anthropic', 'claude-3-5-sonnet-20241022', 'Claude 3.5 Sonnet', 'llm', true, 2),
 ('anthropic', 'claude-3-5-haiku-20241022', 'Claude 3.5 Haiku', 'llm', true, 3),
 ('anthropic', 'claude-3-opus-20240229', 'Claude 3 Opus', 'llm', true, 4),
-('google', 'gemini-2.0-flash', 'Gemini 2.0 Flash', 'llm', true, 1),
-('google', 'gemini-2.0-flash-lite', 'Gemini 2.0 Flash Lite', 'llm', true, 2),
-('google', 'gemini-1.5-pro', 'Gemini 1.5 Pro', 'llm', true, 3),
-('google', 'gemini-1.5-flash', 'Gemini 1.5 Flash', 'llm', true, 4),
+
+('google', 'gemini-3-pro-preview', 'Gemini 3 Pro', 'llm', true, 1),
+('google', 'gemini-3-flash-preview', 'Gemini 3 Flash', 'llm', true, 2),
+('google', 'gemini-2.5-flash', 'Gemini 2.5 Flash', 'llm', true, 3),
+('google', 'gemini-2.5-flash-lite', 'Gemini 2.5 Flash-Lite', 'llm', true, 4),
+('google', 'gemini-2.5-pro', 'Gemini 2.5 Pro', 'llm', true, 4),
+
 ('deepseek', 'deepseek-chat', 'DeepSeek V3', 'llm', true, 1),
 ('deepseek', 'deepseek-reasoner', 'DeepSeek R1', 'llm', true, 2),
 ('zhipu', 'glm-4-plus', 'GLM-4 Plus', 'llm', true, 1),
