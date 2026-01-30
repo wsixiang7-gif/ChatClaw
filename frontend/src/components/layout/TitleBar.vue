@@ -86,7 +86,8 @@ const handleAddAssistantTab = () => {
         :key="tab.id"
         :class="
           cn(
-            'group relative flex h-8 items-center justify-between gap-2 rounded-t-xl px-4',
+            // 标签页高度略小于标题栏，顶部留出一点背景色
+            'group relative flex h-7 items-center justify-between gap-2 rounded-t-xl px-4',
             'transition-colors duration-150',
             navigationStore.activeTabId === tab.id
               ? 'bg-background text-foreground'
@@ -131,7 +132,7 @@ const handleAddAssistantTab = () => {
 
       <!-- + 按钮应紧挨最后一个标签页 -->
       <button
-        class="flex size-8 shrink-0 items-center justify-center rounded hover:bg-[#ccddf5]"
+        class="flex size-7 shrink-0 items-center justify-center rounded hover:bg-[#ccddf5]"
         style="--wails-draggable: no-drag"
         @click="handleAddAssistantTab"
       >
