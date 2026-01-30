@@ -1,7 +1,16 @@
 export default {
   app: {
-    title: 'Wails + Vue',
+    title: 'WillChat',
     theme: 'Theme',
+  },
+  nav: {
+    assistant: 'AI Assistant',
+    knowledge: 'Knowledge Base',
+    multiask: 'Multi Ask',
+    settings: 'Settings',
+  },
+  tabs: {
+    newTab: 'New Tab',
   },
   hello: {
     inputPlaceholder: 'Please enter your name below 👇',

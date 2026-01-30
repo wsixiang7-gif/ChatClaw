@@ -1,52 +1,56 @@
 <script setup lang="ts">
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import HelloWorld from './components/HelloWorld.vue'
-import { Button } from '@/components/ui/button'
-import { useAppStore } from '@/stores'
+import { MainLayout } from '@/components/layout'
+import { useNavigationStore } from '@/stores'
 
 const { t } = useI18n()
-const appStore = useAppStore()
+const navigationStore = useNavigationStore()
 
-const toggleTheme = () => {
-  const themes = ['light', 'dark', 'system'] as const
-  const currentIndex = themes.indexOf(appStore.theme)
-  const nextIndex = (currentIndex + 1) % themes.length
-  appStore.setTheme(themes[nextIndex])
-}
+/**
+ * 当前激活的标签页
+ */
+const activeTab = computed(() => navigationStore.activeTab)
+
+/**
+ * 默认至少保持 1 个标签页：
+ * - 启动时若没有标签页，自动打开一个 AI助手
+ * - 当用户关闭到 0 个标签页时，自动再打开一个 AI助手
+ */
+watch(
+  () => navigationStore.tabs.length,
+  (len) => {
+    if (len === 0) {
+      navigationStore.navigateToModule('assistant', t)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
-    <div class="mb-4 flex gap-4">
-      <a data-wml-openURL="https://wails.io">
-        <img src="/wails.png" class="logo" alt="Wails logo" />
-      </a>
-      <a data-wml-openURL="https://vuejs.org/">
-        <img src="/vue.svg" class="logo vue" alt="Vue logo" />
-      </a>
+  <MainLayout>
+    <!-- 主内容区域 - 显示当前模块的占位内容 -->
+    <div class="flex h-full w-full items-center justify-center bg-background">
+      <div class="flex flex-col items-center gap-4">
+        <!-- 显示当前标签页标题，如果没有标签页则显示提示 -->
+        <template v-if="activeTab">
+          <h1 class="text-2xl font-semibold text-foreground">
+            {{ activeTab.title }}
+          </h1>
+          <p class="text-muted-foreground">
+            {{ t('app.title') }}
+          </p>
+        </template>
+        <template v-else>
+          <h1 class="text-2xl font-semibold text-foreground">
+            {{ t('app.title') }}
+          </h1>
+          <p class="text-muted-foreground">
+            {{ t('nav.assistant') }}
+          </p>
+        </template>
+      </div>
     </div>
-
-    <HelloWorld :msg="t('app.title')" />
-
-    <div class="mt-6">
-      <Button variant="outline" @click="toggleTheme">
-        {{ t('app.theme') }}: {{ appStore.theme }}
-      </Button>
-    </div>
-  </div>
+  </MainLayout>
 </template>
-
-<style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 0.3s;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #e80000aa);
-}
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
-}
-</style>

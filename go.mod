@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/asg017/sqlite-vec-go-bindings v0.1.7-alpha.2
+	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/jeandeaual/go-locale v0.0.0-20250612000132-0ef82f21eade
 	github.com/ncruces/go-sqlite3 v0.20.3
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
