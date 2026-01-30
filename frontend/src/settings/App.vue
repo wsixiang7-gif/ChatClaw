@@ -1,14 +1,13 @@
 <script setup lang="ts">
 /**
- * 独立设置窗口的入口组件
- * 复用 SettingsPage 组件
+ * 独立窗口入口组件
+ * 预留用于其他功能
  */
-import SettingsPage from './SettingsPage.vue'
 </script>
 
 <template>
-  <div class="h-screen">
-    <SettingsPage />
+  <div class="flex h-screen items-center justify-center bg-background text-foreground">
+    <p class="text-muted-foreground">待开发...</p>
   </div>
 </template>
 

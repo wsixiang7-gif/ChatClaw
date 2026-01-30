@@ -9,7 +9,7 @@ import { useI18n } from 'vue-i18n'
 import SettingsSidebar from './components/SettingsSidebar.vue'
 import GeneralSettings from './components/GeneralSettings.vue'
 import SnapSettings from './components/SnapSettings.vue'
-import { useSettingsStore, type SettingsMenuItem } from './stores/settings'
+import { useSettingsStore, type SettingsMenuItem } from '@/stores'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
