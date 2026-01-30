@@ -18,7 +18,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: "index.html",
-        settings: "settings.html",
+        winsnap: "winsnap.html",
       },
     },
   },
