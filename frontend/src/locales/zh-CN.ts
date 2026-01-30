@@ -1,7 +1,16 @@
 export default {
   app: {
-    title: 'Wails + Vue',
+    title: 'WillChat',
     theme: '主题',
+  },
+  nav: {
+    assistant: 'AI助手',
+    knowledge: '知识库',
+    multiask: '多问',
+    settings: '设置',
+  },
+  tabs: {
+    newTab: '新标签页',
   },
   hello: {
     inputPlaceholder: '请在下方输入你的名字 👇',
