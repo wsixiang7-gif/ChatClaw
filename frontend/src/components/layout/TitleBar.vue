@@ -4,7 +4,7 @@
  * 包含侧边栏折叠按钮和多标签页
  */
 import { computed } from 'vue'
-import { System } from '@wailsio/runtime'
+import { System, Window } from '@wailsio/runtime'
 import { useI18n } from 'vue-i18n'
 import { useNavigationStore } from '@/stores'
 import { cn } from '@/lib/utils'
@@ -47,6 +47,18 @@ const handleToggleSidebar = () => {
  */
 const handleAddAssistantTab = () => {
   navigationStore.navigateToModule('assistant', t)
+}
+
+/**
+ * macOS：双击标题栏区域触发窗口“缩放”（等同于绿灯按钮行为）
+ */
+const handleTitleBarDoubleClick = async () => {
+  if (!isMac.value) return
+  try {
+    await Window.Zoom()
+  } catch {
+    // ignore
+  }
 }
 </script>
 
@@ -139,5 +151,12 @@ const handleAddAssistantTab = () => {
         <img :src="IconAddNewTab" alt="" class="size-4" />
       </button>
     </div>
+
+    <!-- 右侧空白拖拽/双击区域（避免干扰 tabs 的交互） -->
+    <div
+      class="flex-1 self-stretch"
+      style="--wails-draggable: drag"
+      @dblclick="handleTitleBarDoubleClick"
+    />
   </div>
 </template>
