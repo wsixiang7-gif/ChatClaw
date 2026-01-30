@@ -23,21 +23,35 @@ import DouyinIcon from '@/assets/icons/snap/douyin.svg'
 
 // 后端绑定
 import { SettingsService, Category } from '@bindings/willchat/internal/services/settings'
+import { WindowService } from '@bindings/willchat/internal/services/windows'
 
 const { t } = useI18n()
+
+// 子窗口名称常量
+const WINDOW_WINSNAP = 'winsnap'
 
 // 设置状态
 const showAiSendButton = ref(true)
 const sendKeyStrategy = ref('enter')
 const showAiEditButton = ref(true)
 
-// 吸附应用状态
-const snapWechat = ref(true)
-const snapWecom = ref(true)
-const snapQQ = ref(true)
-const snapDingtalk = ref(true)
-const snapFeishu = ref(true)
-const snapDouyin = ref(true)
+// 吸附应用状态（互斥，同一时间只能开启一个）
+const snapWechat = ref(false)
+const snapWecom = ref(false)
+const snapQQ = ref(false)
+const snapDingtalk = ref(false)
+const snapFeishu = ref(false)
+const snapDouyin = ref(false)
+
+// 所有吸附应用的 ref 映射，用于互斥控制
+const snapAppRefs: Record<string, { value: boolean }> = {
+  snap_wechat: snapWechat,
+  snap_wecom: snapWecom,
+  snap_qq: snapQQ,
+  snap_dingtalk: snapDingtalk,
+  snap_feishu: snapFeishu,
+  snap_douyin: snapDouyin,
+}
 
 // 发送按键模式选项
 const sendKeyOptions = [
@@ -90,6 +104,8 @@ const snapApps = computed(() => [
 const loadSettings = async () => {
   try {
     const settings = await SettingsService.List(Category.CategorySnap)
+    let hasActiveSnapApp = false
+
     settings.forEach((setting) => {
       switch (setting.key) {
         case 'show_ai_send_button':
@@ -103,24 +119,39 @@ const loadSettings = async () => {
           break
         case 'snap_wechat':
           snapWechat.value = setting.value === 'true'
+          if (setting.value === 'true') hasActiveSnapApp = true
           break
         case 'snap_wecom':
           snapWecom.value = setting.value === 'true'
+          if (setting.value === 'true') hasActiveSnapApp = true
           break
         case 'snap_qq':
           snapQQ.value = setting.value === 'true'
+          if (setting.value === 'true') hasActiveSnapApp = true
           break
         case 'snap_dingtalk':
           snapDingtalk.value = setting.value === 'true'
+          if (setting.value === 'true') hasActiveSnapApp = true
           break
         case 'snap_feishu':
           snapFeishu.value = setting.value === 'true'
+          if (setting.value === 'true') hasActiveSnapApp = true
           break
         case 'snap_douyin':
           snapDouyin.value = setting.value === 'true'
+          if (setting.value === 'true') hasActiveSnapApp = true
           break
       }
     })
+
+    // 如果有活跃的吸附应用，显示 winsnap 子窗口
+    if (hasActiveSnapApp) {
+      try {
+        await WindowService.Show(WINDOW_WINSNAP)
+      } catch (error) {
+        console.error('Failed to show winsnap window on load:', error)
+      }
+    }
   } catch (error) {
     console.error('Failed to load snap settings:', error)
   }
@@ -147,10 +178,37 @@ const handleAiEditButtonChange = (val: boolean) => {
   void updateSetting('show_ai_edit_button', String(val))
 }
 
-// 处理吸附应用开关变化
-const handleSnapAppChange = (key: string, refValue: { value: boolean }, val: boolean) => {
-  refValue.value = val
-  void updateSetting(key, String(val))
+// 处理吸附应用开关变化（互斥逻辑）
+const handleSnapAppChange = async (key: string, refValue: { value: boolean }, val: boolean) => {
+  if (val) {
+    // 开启时：先关闭其他所有开关，再开启当前开关
+    for (const [appKey, appRef] of Object.entries(snapAppRefs)) {
+      if (appKey !== key && appRef.value) {
+        appRef.value = false
+        void updateSetting(appKey, 'false')
+      }
+    }
+    refValue.value = true
+    void updateSetting(key, 'true')
+
+    // 显示 winsnap 子窗口
+    try {
+      await WindowService.Show(WINDOW_WINSNAP)
+    } catch (error) {
+      console.error('Failed to show winsnap window:', error)
+    }
+  } else {
+    // 关闭时：关闭当前开关并关闭子窗口
+    refValue.value = false
+    void updateSetting(key, 'false')
+
+    // 关闭 winsnap 子窗口
+    try {
+      await WindowService.Close(WINDOW_WINSNAP)
+    } catch (error) {
+      console.error('Failed to close winsnap window:', error)
+    }
+  }
 }
 
 // 处理发送按键模式变化
