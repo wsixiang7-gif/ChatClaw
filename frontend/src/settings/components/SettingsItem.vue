@@ -15,7 +15,7 @@ defineProps<{
 <template>
   <div
     class="flex items-center justify-between p-4"
-    :class="bordered !== false && 'border-b border-border'"
+    :class="bordered !== false && 'border-b border-border dark:border-white/10'"
   >
     <span class="text-sm font-medium text-foreground">
       {{ label }}

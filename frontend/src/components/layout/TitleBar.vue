@@ -65,7 +65,7 @@ const handleTitleBarDoubleClick = async () => {
 
 <template>
   <div
-    class="flex h-8 items-end gap-2 overflow-hidden bg-[#dee8fa] pr-2"
+    class="flex h-8 items-end gap-2 overflow-hidden bg-[#dee8fa] pr-2 dark:bg-[#1e1e2e]"
     style="--wails-draggable: drag"
   >
     <!-- 左侧：macOS 窗口控制按钮区域 + 侧边栏折叠按钮（单独居中对齐，避免受 tabs 的贴底布局影响） -->
@@ -84,11 +84,11 @@ const handleTitleBarDoubleClick = async () => {
 
       <!-- 侧边栏展开/收起按钮 -->
       <button
-        class="flex size-6 shrink-0 items-center justify-center rounded hover:bg-[#ccddf5]"
+        class="flex size-6 shrink-0 items-center justify-center rounded text-foreground/70 hover:bg-[#ccddf5] hover:text-foreground dark:hover:bg-white/10"
         style="--wails-draggable: no-drag"
         @click="handleToggleSidebar"
       >
-        <img :src="IconSidebarToggle" alt="" class="size-4" />
+        <IconSidebarToggle class="size-4" />
       </button>
     </div>
 
@@ -104,7 +104,7 @@ const handleTitleBarDoubleClick = async () => {
             'transition-colors duration-150',
             navigationStore.activeTabId === tab.id
               ? 'bg-background text-foreground'
-              : 'bg-[#dee8fa] text-muted-foreground hover:bg-[#ccddf5]'
+              : 'bg-[#dee8fa] text-muted-foreground hover:bg-[#ccddf5] dark:bg-[#1e1e2e] dark:hover:bg-white/10'
           )
         "
         style="--wails-draggable: no-drag"
@@ -145,11 +145,11 @@ const handleTitleBarDoubleClick = async () => {
 
       <!-- + 按钮应紧挨最后一个标签页 -->
       <button
-        class="flex size-7 shrink-0 items-center justify-center rounded hover:bg-[#ccddf5]"
+        class="flex size-7 shrink-0 items-center justify-center rounded text-foreground/70 hover:bg-[#ccddf5] hover:text-foreground dark:hover:bg-white/10"
         style="--wails-draggable: no-drag"
         @click="handleAddAssistantTab"
       >
-        <img :src="IconAddNewTab" alt="" class="size-4" />
+        <IconAddNewTab class="size-4" />
       </button>
     </div>
 

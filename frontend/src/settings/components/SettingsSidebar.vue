@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import type { FunctionalComponent, SVGAttributes } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { cn } from '@/lib/utils'
 import { useSettingsStore, type SettingsMenuItem } from '../stores/settings'
 
-// 导入图标
+// 导入图标（作为 Vue 组件）
 import ModelServiceIcon from '@/assets/icons/model-service.svg'
 import GeneralSettingsIcon from '@/assets/icons/general-settings.svg'
 import SnapSettingsIcon from '@/assets/icons/snap-settings.svg'
@@ -16,7 +17,7 @@ const settingsStore = useSettingsStore()
 interface MenuItem {
   id: SettingsMenuItem
   labelKey: string
-  icon: string
+  icon: FunctionalComponent<SVGAttributes>
 }
 
 const menuItems: MenuItem[] = [
@@ -33,13 +34,15 @@ const handleMenuClick = (menuId: SettingsMenuItem) => {
 </script>
 
 <template>
-  <nav class="flex h-full w-[182px] flex-col gap-0.5 border-r border-border bg-background py-2">
+  <nav
+    class="flex h-full w-[182px] flex-col gap-0.5 border-r border-border bg-background py-2 dark:border-white/10 dark:bg-background/50"
+  >
     <button
       v-for="item in menuItems"
       :key="item.id"
       :class="
         cn(
-          'mx-2 flex h-9 items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors',
+          'group mx-2 flex h-9 items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors',
           settingsStore.activeMenu === item.id
             ? 'bg-accent font-medium text-foreground'
             : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
@@ -47,11 +50,14 @@ const handleMenuClick = (menuId: SettingsMenuItem) => {
       "
       @click="handleMenuClick(item.id)"
     >
-      <img
-        :src="item.icon"
-        :alt="t(item.labelKey)"
-        class="size-4"
-        :class="settingsStore.activeMenu === item.id ? 'opacity-100' : 'opacity-70'"
+      <component
+        :is="item.icon"
+        class="size-4 transition-opacity"
+        :class="
+          settingsStore.activeMenu === item.id
+            ? 'opacity-100'
+            : 'opacity-70 group-hover:opacity-100'
+        "
       />
       <span>{{ t(item.labelKey) }}</span>
     </button>

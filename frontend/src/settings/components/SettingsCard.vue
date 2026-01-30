@@ -11,9 +11,13 @@ defineProps<{
 </script>
 
 <template>
-  <div class="w-[530px] flex-none rounded-2xl border border-border bg-card shadow-sm">
+  <div
+    class="w-[530px] flex-none rounded-2xl border border-border bg-card shadow-sm dark:border-white/15 dark:shadow-none dark:ring-1 dark:ring-white/5"
+  >
     <!-- 标题区域 -->
-    <div class="flex items-center justify-between border-b border-border p-4">
+    <div
+      class="flex items-center justify-between rounded-t-2xl border-b border-border bg-muted/30 p-4 dark:border-white/10 dark:bg-white/5"
+    >
       <h2 class="text-base font-semibold text-foreground">
         {{ title }}
       </h2>
