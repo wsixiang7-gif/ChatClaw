@@ -69,9 +69,16 @@ const handleTrayIconChange = async (val: boolean) => {
 }
 
 // 处理最小化到托盘开关变化
-const handleMinimizeToTrayChange = (val: boolean) => {
+const handleMinimizeToTrayChange = async (val: boolean) => {
   minimizeToTrayOnClose.value = val
   void updateSetting('minimize_to_tray_on_close', String(val))
+
+  // 同步更新后端内存缓存，避免窗口关闭时查库
+  try {
+    await TrayService.SetMinimizeToTrayEnabled(val)
+  } catch (error) {
+    console.error('Failed to update minimize-to-tray setting:', error)
+  }
 }
 
 // 处理悬浮窗开关变化
@@ -103,7 +110,10 @@ onMounted(() => {
 
       <!-- 关闭时最小化到托盘 -->
       <SettingsItem :label="t('settings.tools.tray.minimizeOnClose')" :bordered="false">
-        <Switch :model-value="minimizeToTrayOnClose" @update:model-value="handleMinimizeToTrayChange" />
+        <Switch
+          :model-value="minimizeToTrayOnClose"
+          @update:model-value="handleMinimizeToTrayChange"
+        />
       </SettingsItem>
     </SettingsCard>
 
@@ -111,7 +121,10 @@ onMounted(() => {
     <SettingsCard :title="t('settings.tools.floatingWindow.title')">
       <!-- 显示悬浮窗 -->
       <SettingsItem :label="t('settings.tools.floatingWindow.show')" :bordered="false">
-        <Switch :model-value="showFloatingWindow" @update:model-value="handleFloatingWindowChange" />
+        <Switch
+          :model-value="showFloatingWindow"
+          @update:model-value="handleFloatingWindowChange"
+        />
       </SettingsItem>
     </SettingsCard>
 
@@ -119,7 +132,10 @@ onMounted(() => {
     <SettingsCard :title="t('settings.tools.selectionSearch.title')">
       <!-- 划词搜索 -->
       <SettingsItem :label="t('settings.tools.selectionSearch.enable')" :bordered="false">
-        <Switch :model-value="enableSelectionSearch" @update:model-value="handleSelectionSearchChange" />
+        <Switch
+          :model-value="enableSelectionSearch"
+          @update:model-value="handleSelectionSearchChange"
+        />
       </SettingsItem>
     </SettingsCard>
   </div>

@@ -71,5 +71,5 @@ defineProps<{
 ## 多窗口
 
 - 主窗口入口：`src/main.ts` + `index.html`
-- 设置窗口入口：`src/settings/main.ts` + `settings.html`
+- 子窗口入口：`src/winsnap/main.ts` + `winsnap.html`
 - 新窗口需要在 `vite.config.ts` 的 `rollupOptions.input` 添加入口

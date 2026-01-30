@@ -27,7 +27,20 @@ INSERT OR IGNORE INTO settings (key, value, type, category, description, created
 			return nil
 		},
 		func(ctx context.Context, db *bun.DB) error {
-			if _, err := db.ExecContext(ctx, `DROP TABLE IF EXISTS settings;`); err != nil {
+			// 回滚时仅删除本次 migration 写入的 keys，避免误删整张 settings 表
+			if _, err := db.ExecContext(ctx, `
+DELETE FROM settings WHERE key IN (
+  'show_ai_send_button',
+  'send_key_strategy',
+  'show_ai_edit_button',
+  'snap_wechat',
+  'snap_wecom',
+  'snap_qq',
+  'snap_dingtalk',
+  'snap_feishu',
+  'snap_douyin'
+);
+`); err != nil {
 				return err
 			}
 			return nil
