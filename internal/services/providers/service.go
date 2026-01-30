@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"willchat/internal/define"
 	"willchat/internal/errs"
 	"willchat/internal/sqlite"
 
@@ -201,22 +202,8 @@ func (s *ProvidersService) ResetAPIEndpoint(providerID string) (*Provider, error
 		return nil, errs.New("error.provider_id_required")
 	}
 
-	// 内置供应商的默认 API 地址
-	defaultEndpoints := map[string]string{
-		"openai":    "https://api.openai.com/v1",
-		"anthropic": "https://api.anthropic.com/v1",
-		"google":    "https://generativelanguage.googleapis.com/v1beta",
-		"deepseek":  "https://api.deepseek.com/v1",
-		"zhipu":     "https://open.bigmodel.cn/api/paas/v4",
-		"qwen":      "https://dashscope.aliyuncs.com/compatible-mode/v1",
-		"doubao":    "https://ark.cn-beijing.volces.com/api/v3",
-		"baidu":     "https://qianfan.baidubce.com/v2",
-		"groq":      "https://api.groq.com/openai/v1",
-		"ollama":    "http://localhost:11434/v1",
-		"azure":     "",
-	}
-
-	defaultEndpoint, ok := defaultEndpoints[providerID]
+	// 从共享配置获取默认 API 地址
+	defaultEndpoint, ok := define.GetBuiltinProviderDefaultEndpoint(providerID)
 	if !ok {
 		// 非内置供应商，清空地址
 		defaultEndpoint = ""

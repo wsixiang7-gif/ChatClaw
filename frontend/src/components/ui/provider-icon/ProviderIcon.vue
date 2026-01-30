@@ -1,21 +1,20 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
+import type { FunctionalComponent, SVGAttributes, HTMLAttributes } from 'vue'
 import { computed } from 'vue'
 import { cn } from '@/lib/utils'
 
-// 静态导入所有内置供应商图标（使用 ?url 后缀确保作为 URL 导入）
-import openaiIcon from '@/assets/icons/providers/openai.svg?url'
-import azureIcon from '@/assets/icons/providers/azure.svg?url'
-import anthropicIcon from '@/assets/icons/providers/anthropic.svg?url'
-import googleIcon from '@/assets/icons/providers/google.svg?url'
-import deepseekIcon from '@/assets/icons/providers/deepseek.svg?url'
-import zhipuIcon from '@/assets/icons/providers/zhipu.svg?url'
-import qwenIcon from '@/assets/icons/providers/qwen.svg?url'
-import doubaoIcon from '@/assets/icons/providers/doubao.svg?url'
-import baiduIcon from '@/assets/icons/providers/baidu.svg?url'
-import groqIcon from '@/assets/icons/providers/groq.svg?url'
-import ollamaIcon from '@/assets/icons/providers/ollama.svg?url'
-import defaultIcon from '@/assets/icons/providers/openai.svg?url'
+// 静态导入所有内置供应商图标（作为 Vue 组件，支持 currentColor）
+import OpenaiIcon from '@/assets/icons/providers/openai.svg'
+import AzureIcon from '@/assets/icons/providers/azure.svg'
+import AnthropicIcon from '@/assets/icons/providers/anthropic.svg'
+import GoogleIcon from '@/assets/icons/providers/google.svg'
+import DeepseekIcon from '@/assets/icons/providers/deepseek.svg'
+import ZhipuIcon from '@/assets/icons/providers/zhipu.svg'
+import QwenIcon from '@/assets/icons/providers/qwen.svg'
+import DoubaoIcon from '@/assets/icons/providers/doubao.svg'
+import BaiduIcon from '@/assets/icons/providers/baidu.svg'
+import GrokIcon from '@/assets/icons/providers/grok.svg'
+import OllamaIcon from '@/assets/icons/providers/ollama.svg'
 
 interface Props {
   /**
@@ -36,19 +35,19 @@ const props = withDefaults(defineProps<Props>(), {
   size: 24,
 })
 
-// 内置供应商图标映射
-const builtinIcons: Record<string, string> = {
-  openai: openaiIcon,
-  azure: azureIcon,
-  anthropic: anthropicIcon,
-  google: googleIcon,
-  deepseek: deepseekIcon,
-  zhipu: zhipuIcon,
-  qwen: qwenIcon,
-  doubao: doubaoIcon,
-  baidu: baiduIcon,
-  groq: groqIcon,
-  ollama: ollamaIcon,
+// 内置供应商图标映射（Vue 组件）
+const builtinIcons: Record<string, FunctionalComponent<SVGAttributes>> = {
+  openai: OpenaiIcon,
+  azure: AzureIcon,
+  anthropic: AnthropicIcon,
+  google: GoogleIcon,
+  deepseek: DeepseekIcon,
+  zhipu: ZhipuIcon,
+  qwen: QwenIcon,
+  doubao: DoubaoIcon,
+  baidu: BaiduIcon,
+  grok: GrokIcon,
+  ollama: OllamaIcon,
 }
 
 /**
@@ -65,32 +64,44 @@ function isBuiltinIcon(str: string): boolean {
   return str in builtinIcons
 }
 
-const iconSrc = computed(() => {
+// 获取内置图标组件
+const iconComponent = computed(() => {
   const icon = props.icon?.trim()
-
-  // 空值：使用默认图标
-  if (!icon) {
-    return defaultIcon
-  }
-
-  // Data URL（自定义上传的图标）
-  if (isDataUrl(icon)) {
-    return icon
-  }
-
-  // 内置图标标识符
-  if (isBuiltinIcon(icon)) {
+  if (icon && isBuiltinIcon(icon)) {
     return builtinIcons[icon]
   }
+  return builtinIcons.openai // 默认使用 OpenAI 图标
+})
 
-  // 未知值：使用默认图标
-  return defaultIcon
+// 获取 Data URL 图标
+const iconUrl = computed(() => {
+  const icon = props.icon?.trim()
+  if (icon && isDataUrl(icon)) {
+    return icon
+  }
+  return null
+})
+
+// 是否使用组件渲染（内置图标）
+const useComponent = computed(() => {
+  const icon = props.icon?.trim()
+  return !icon || isBuiltinIcon(icon)
 })
 </script>
 
 <template>
+  <!-- 内置图标：作为 Vue 组件渲染，支持 currentColor -->
+  <component
+    v-if="useComponent"
+    :is="iconComponent"
+    :width="size"
+    :height="size"
+    :class="cn('inline-block shrink-0 text-foreground', props.class)"
+  />
+  <!-- Data URL 图标：作为 img 渲染 -->
   <img
-    :src="iconSrc"
+    v-else
+    :src="iconUrl || ''"
     :width="size"
     :height="size"
     alt="provider icon"

@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Eye, EyeOff } from 'lucide-vue-next'
+import ModelIcon from '@/assets/icons/model.svg'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -416,14 +417,7 @@ const defaultAccordionValue = computed(() => {
                         :key="model.model_id"
                         class="flex items-center gap-2 px-4 py-2"
                       >
-                        <div
-                          :class="
-                            cn(
-                              'size-2 shrink-0 rounded-full',
-                              model.enabled ? 'bg-green-500' : 'bg-muted-foreground/30'
-                            )
-                          "
-                        />
+                        <ModelIcon class="size-5 shrink-0 text-muted-foreground" />
                         <span class="text-sm text-foreground">{{ model.name }}</span>
                       </div>
                       <div
