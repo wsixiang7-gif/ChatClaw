@@ -2,6 +2,8 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import DefaultTabIcon from '@/assets/images/tab-default.png'
 
+const createTabId = () => `tab-${crypto.randomUUID()}`
+
 /**
  * 导航模块类型
  */
@@ -93,7 +95,7 @@ export const useNavigationStore = defineStore('navigation', () => {
     }
 
     // 创建新标签页
-    const id = `tab-${Date.now()}`
+    const id = createTabId()
     const newTab: Tab = {
       id,
       title: t(moduleLabels[module]),
@@ -108,8 +110,8 @@ export const useNavigationStore = defineStore('navigation', () => {
    * 添加新标签页
    */
   const addTab = (tab: Omit<Tab, 'id'>) => {
-    const id = `tab-${Date.now()}`
-    const newTab: Tab = { icon: DefaultTabIcon, ...tab, id }
+    const id = createTabId()
+    const newTab: Tab = { ...tab, icon: tab.icon ?? DefaultTabIcon, id }
     tabs.value.push(newTab)
     activeTabId.value = id
     return id

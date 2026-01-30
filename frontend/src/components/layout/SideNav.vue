@@ -2,7 +2,9 @@
 /**
  * 左侧导航菜单组件
  * 包含 AI助手、知识库、多问、设置 四个导航项
- * 点击导航项会自动打开新标签页
+ * 点击导航项会切换/打开对应模块的标签页：
+ * - AI助手：总是新建标签页
+ * - 知识库、多问、设置：已有则切换，否则新建
  */
 import { useI18n } from 'vue-i18n'
 import { useNavigationStore, type NavModule } from '@/stores'

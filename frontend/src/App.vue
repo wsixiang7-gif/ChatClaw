@@ -8,19 +8,6 @@ const { t } = useI18n()
 const navigationStore = useNavigationStore()
 
 /**
- * 获取当前模块的显示名称
- */
-const moduleLabel = computed(() => {
-  const moduleLabels: Record<string, string> = {
-    assistant: 'nav.assistant',
-    knowledge: 'nav.knowledge',
-    multiask: 'nav.multiask',
-    settings: 'nav.settings',
-  }
-  return moduleLabels[navigationStore.activeModule] || 'nav.assistant'
-})
-
-/**
  * 当前激活的标签页
  */
 const activeTab = computed(() => navigationStore.activeTab)

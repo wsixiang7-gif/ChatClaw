@@ -16,6 +16,10 @@ const { t } = useI18n()
 
 const isMac = computed(() => System.IsMac())
 
+type StopPropagationEvent = {
+  stopPropagation: () => void
+}
+
 /**
  * 处理标签页点击
  */
@@ -26,8 +30,8 @@ const handleTabClick = (tabId: string) => {
 /**
  * 处理标签页关闭
  */
-const handleTabClose = (event: { stopPropagation?: () => void } | null, tabId: string) => {
-  event?.stopPropagation?.()
+const handleTabClose = (event: StopPropagationEvent, tabId: string) => {
+  event.stopPropagation()
   navigationStore.closeTab(tabId)
 }
 
@@ -94,27 +98,12 @@ const handleAddAssistantTab = () => {
       >
         <div class="flex items-center gap-2">
           <!-- 标签页图标 -->
-          <div
-            v-if="tab.icon"
-            class="size-5 shrink-0 overflow-hidden rounded-md"
-          >
+          <div v-if="tab.icon" class="size-5 shrink-0 overflow-hidden rounded-md">
             <img :src="tab.icon" alt="" class="size-full object-cover" />
           </div>
-          <div
-            v-else
-            class="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted"
-          >
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              class="size-3"
-            >
-              <path
-                d="M8 2a6 6 0 100 12A6 6 0 008 2z"
-                stroke="currentColor"
-                stroke-width="1.5"
-              />
+          <div v-else class="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted">
+            <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" class="size-3">
+              <path d="M8 2a6 6 0 100 12A6 6 0 008 2z" stroke="currentColor" stroke-width="1.5" />
             </svg>
           </div>
           <!-- 标签页标题 -->
@@ -122,15 +111,14 @@ const handleAddAssistantTab = () => {
         </div>
         <!-- 关闭按钮 -->
         <div
+          role="button"
+          tabindex="0"
           class="flex size-4 items-center justify-center rounded opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
           @click="handleTabClose($event, tab.id)"
+          @keydown.enter.prevent="handleTabClose($event, tab.id)"
+          @keydown.space.prevent="handleTabClose($event, tab.id)"
         >
-          <svg
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            class="size-3"
-          >
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" class="size-3">
             <path
               d="M4 4l8 8M12 4l-8 8"
               stroke="currentColor"
