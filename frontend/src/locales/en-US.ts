@@ -40,6 +40,26 @@ export default {
       language: 'Language',
       theme: 'Theme Color',
     },
+    // Snap settings
+    snap: {
+      title: 'Settings',
+      showAiSendButton: 'Show "Send to Chat" Button for AI Reply',
+      sendKeyStrategy: 'Send Message Key Mode',
+      showAiEditButton: 'Show "Edit Content" Button for AI Reply',
+      appsTitle: 'Snap Apps',
+      sendKeyOptions: {
+        enter: 'Press Enter to send',
+        ctrlEnter: 'Press Ctrl+Enter to send',
+      },
+      apps: {
+        wechat: 'WeChat',
+        wecom: 'WeCom',
+        qq: 'QQ',
+        dingtalk: 'DingTalk',
+        feishu: 'Feishu',
+        douyin: 'Douyin',
+      },
+    },
     // Language options
     languages: {
       zhCN: 'Chinese',

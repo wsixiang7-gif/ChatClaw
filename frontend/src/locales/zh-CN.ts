@@ -40,6 +40,26 @@ export default {
       language: '语言',
       theme: '主题颜色',
     },
+    // 吸附设置
+    snap: {
+      title: '设置',
+      showAiSendButton: 'AI回复显示发送到聊天按钮',
+      sendKeyStrategy: '发送消息按键模式',
+      showAiEditButton: 'AI回复显示编辑内容按钮',
+      appsTitle: '吸附应用',
+      sendKeyOptions: {
+        enter: '按enter键发送',
+        ctrlEnter: '按Ctrl+Enter键发送',
+      },
+      apps: {
+        wechat: '微信',
+        wecom: '企业微信',
+        qq: 'QQ',
+        dingtalk: '钉钉',
+        feishu: '飞书',
+        douyin: '抖音',
+      },
+    },
     // 语言选项
     languages: {
       zhCN: '中文',
