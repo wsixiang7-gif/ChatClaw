@@ -22,7 +22,7 @@ import FeishuIcon from '@/assets/icons/snap/feishu.svg'
 import DouyinIcon from '@/assets/icons/snap/douyin.svg'
 
 // 后端绑定
-import { SettingsService, Category } from '../../../../bindings/willchat/internal/services/settings'
+import { SettingsService, Category } from '@bindings/willchat/internal/services/settings'
 
 const { t } = useI18n()
 
