@@ -9,7 +9,10 @@ import { useI18n } from 'vue-i18n'
 import SettingsSidebar from './components/SettingsSidebar.vue'
 import GeneralSettings from './components/GeneralSettings.vue'
 import ModelServiceSettings from './components/ModelServiceSettings.vue'
-import { useSettingsStore, type SettingsMenuItem } from './stores/settings'
+import SnapSettings from './components/SnapSettings.vue'
+import ToolsSettings from './components/ToolsSettings.vue'
+import AboutSettings from './components/AboutSettings.vue'
+import { useSettingsStore, type SettingsMenuItem } from '@/stores'
 
 const { t } = useI18n()
 const settingsStore = useSettingsStore()
@@ -27,9 +30,9 @@ const menuLabelKeys: Record<SettingsMenuItem, string> = {
 const menuComponents: Record<SettingsMenuItem, Component | null> = {
   modelService: ModelServiceSettings,
   generalSettings: GeneralSettings,
-  snapSettings: null,
-  tools: null,
-  about: null,
+  snapSettings: SnapSettings,
+  tools: ToolsSettings,
+  about: AboutSettings,
 }
 
 // 是否为全宽组件（不需要居中包装）

@@ -2,7 +2,7 @@
 import type { FunctionalComponent, SVGAttributes } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { cn } from '@/lib/utils'
-import { useSettingsStore, type SettingsMenuItem } from '../stores/settings'
+import { useSettingsStore, type SettingsMenuItem } from '@/stores'
 
 // 导入图标（作为 Vue 组件）
 import ModelServiceIcon from '@/assets/icons/model-service.svg'
@@ -35,7 +35,7 @@ const handleMenuClick = (menuId: SettingsMenuItem) => {
 
 <template>
   <nav
-    class="flex h-full w-44 flex-col gap-0.5 border-r border-border bg-background py-2 dark:border-white/10 dark:bg-background/50"
+    class="flex h-full w-[182px] flex-col gap-0.5 border-r border-border bg-background py-2 dark:border-white/10 dark:bg-background/50"
   >
     <button
       v-for="item in menuItems"
