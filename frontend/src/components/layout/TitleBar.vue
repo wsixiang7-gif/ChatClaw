@@ -2,8 +2,8 @@
 /**
  * 标题栏组件
  * 包含侧边栏折叠按钮、多标签页和窗口控制按钮
- * - macOS: 窗口控制按钮在左侧，高度 40px
- * - Windows: 窗口控制按钮在右侧，高度 40px
+ * - macOS: 自定义红黄绿按钮在左侧，高度 40px
+ * - Windows: 自定义窗口控制按钮在右侧，高度 40px
  */
 import { computed } from 'vue'
 import { System, Window } from '@wailsio/runtime'
@@ -78,7 +78,7 @@ const handleTitleBarDoubleClick = async () => {
   >
     <!-- 左侧区域 -->
     <div class="flex h-full shrink-0 items-center gap-4 pl-3">
-      <!-- macOS 窗口控制按钮（左侧） -->
+      <!-- macOS: 自定义红黄绿按钮 -->
       <WindowControlButtons v-if="isMac" position="left" />
 
       <!-- 侧边栏展开/收起按钮 -->
