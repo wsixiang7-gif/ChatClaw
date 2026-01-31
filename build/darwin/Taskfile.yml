@@ -127,6 +127,8 @@ tasks:
     summary: Packages the application into a `.app` bundle
     deps:
       - task: build
+        vars:
+          ARCH: '{{.ARCH}}'
     cmds:
       - task: create:app:bundle
 
