@@ -39,7 +39,6 @@ func NewApp(opts Options) (*application.App, error) {
 			Handler: application.AssetFileServerFS(opts.Assets),
 		},
 		Mac: application.MacOptions{
-			// 设置为 false，允许应用在窗口隐藏到托盘后继续运行
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
 		},
 	})
