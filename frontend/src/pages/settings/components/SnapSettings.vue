@@ -100,6 +100,13 @@ const snapApps = computed(() => [
   },
 ])
 
+// 布尔设置映射表
+const boolSettingsMap: Record<string, { value: boolean }> = {
+  show_ai_send_button: showAiSendButton,
+  show_ai_edit_button: showAiEditButton,
+  ...snapAppRefs,
+}
+
 // 加载设置
 const loadSettings = async () => {
   try {
@@ -107,40 +114,19 @@ const loadSettings = async () => {
     let hasActiveSnapApp = false
 
     settings.forEach((setting) => {
-      switch (setting.key) {
-        case 'show_ai_send_button':
-          showAiSendButton.value = setting.value === 'true'
-          break
-        case 'send_key_strategy':
-          sendKeyStrategy.value = setting.value
-          break
-        case 'show_ai_edit_button':
-          showAiEditButton.value = setting.value === 'true'
-          break
-        case 'snap_wechat':
-          snapWechat.value = setting.value === 'true'
-          if (setting.value === 'true') hasActiveSnapApp = true
-          break
-        case 'snap_wecom':
-          snapWecom.value = setting.value === 'true'
-          if (setting.value === 'true') hasActiveSnapApp = true
-          break
-        case 'snap_qq':
-          snapQQ.value = setting.value === 'true'
-          if (setting.value === 'true') hasActiveSnapApp = true
-          break
-        case 'snap_dingtalk':
-          snapDingtalk.value = setting.value === 'true'
-          if (setting.value === 'true') hasActiveSnapApp = true
-          break
-        case 'snap_feishu':
-          snapFeishu.value = setting.value === 'true'
-          if (setting.value === 'true') hasActiveSnapApp = true
-          break
-        case 'snap_douyin':
-          snapDouyin.value = setting.value === 'true'
-          if (setting.value === 'true') hasActiveSnapApp = true
-          break
+      // 处理布尔类型设置
+      const boolRef = boolSettingsMap[setting.key]
+      if (boolRef) {
+        boolRef.value = setting.value === 'true'
+        // 检查是否有活跃的吸附应用
+        if (setting.key in snapAppRefs && setting.value === 'true') {
+          hasActiveSnapApp = true
+        }
+        return
+      }
+      // 处理其他类型设置
+      if (setting.key === 'send_key_strategy') {
+        sendKeyStrategy.value = setting.value
       }
     })
 
@@ -167,29 +153,33 @@ const updateSetting = async (key: string, value: string) => {
 }
 
 // 处理 AI 发送按钮开关变化
-const handleAiSendButtonChange = (val: boolean) => {
+const handleAiSendButtonChange = async (val: boolean) => {
   showAiSendButton.value = val
-  void updateSetting('show_ai_send_button', String(val))
+  await updateSetting('show_ai_send_button', String(val))
 }
 
 // 处理 AI 编辑按钮开关变化
-const handleAiEditButtonChange = (val: boolean) => {
+const handleAiEditButtonChange = async (val: boolean) => {
   showAiEditButton.value = val
-  void updateSetting('show_ai_edit_button', String(val))
+  await updateSetting('show_ai_edit_button', String(val))
 }
 
 // 处理吸附应用开关变化（互斥逻辑）
 const handleSnapAppChange = async (key: string, refValue: { value: boolean }, val: boolean) => {
   if (val) {
     // 开启时：先关闭其他所有开关，再开启当前开关
+    // 使用 Promise.all 确保所有设置保存完成
+    const closePromises: Promise<void>[] = []
     for (const [appKey, appRef] of Object.entries(snapAppRefs)) {
       if (appKey !== key && appRef.value) {
         appRef.value = false
-        void updateSetting(appKey, 'false')
+        closePromises.push(updateSetting(appKey, 'false'))
       }
     }
+    await Promise.all(closePromises)
+
     refValue.value = true
-    void updateSetting(key, 'true')
+    await updateSetting(key, 'true')
 
     // 显示 winsnap 子窗口
     try {
@@ -200,7 +190,7 @@ const handleSnapAppChange = async (key: string, refValue: { value: boolean }, va
   } else {
     // 关闭时：关闭当前开关并关闭子窗口
     refValue.value = false
-    void updateSetting(key, 'false')
+    await updateSetting(key, 'false')
 
     // 关闭 winsnap 子窗口
     try {
@@ -212,10 +202,10 @@ const handleSnapAppChange = async (key: string, refValue: { value: boolean }, va
 }
 
 // 处理发送按键模式变化
-const handleSendKeyChange = (value: AcceptableValue) => {
+const handleSendKeyChange = async (value: AcceptableValue) => {
   if (typeof value === 'string') {
     sendKeyStrategy.value = value
-    void updateSetting('send_key_strategy', value)
+    await updateSetting('send_key_strategy', value)
   }
 }
 

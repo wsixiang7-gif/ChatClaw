@@ -21,24 +21,22 @@ const showFloatingWindow = ref(true)
 // 划词搜索设置状态
 const enableSelectionSearch = ref(true)
 
+// 布尔设置映射表
+const boolSettingsMap: Record<string, { value: boolean }> = {
+  show_tray_icon: showTrayIcon,
+  minimize_to_tray_on_close: minimizeToTrayOnClose,
+  show_floating_window: showFloatingWindow,
+  enable_selection_search: enableSelectionSearch,
+}
+
 // 加载设置
 const loadSettings = async () => {
   try {
     const settings = await SettingsService.List(Category.CategoryTools)
     settings.forEach((setting) => {
-      switch (setting.key) {
-        case 'show_tray_icon':
-          showTrayIcon.value = setting.value === 'true'
-          break
-        case 'minimize_to_tray_on_close':
-          minimizeToTrayOnClose.value = setting.value === 'true'
-          break
-        case 'show_floating_window':
-          showFloatingWindow.value = setting.value === 'true'
-          break
-        case 'enable_selection_search':
-          enableSelectionSearch.value = setting.value === 'true'
-          break
+      const boolRef = boolSettingsMap[setting.key]
+      if (boolRef) {
+        boolRef.value = setting.value === 'true'
       }
     })
   } catch (error) {
@@ -82,15 +80,15 @@ const handleMinimizeToTrayChange = async (val: boolean) => {
 }
 
 // 处理悬浮窗开关变化
-const handleFloatingWindowChange = (val: boolean) => {
+const handleFloatingWindowChange = async (val: boolean) => {
   showFloatingWindow.value = val
-  void updateSetting('show_floating_window', String(val))
+  await updateSetting('show_floating_window', String(val))
 }
 
 // 处理划词搜索开关变化
-const handleSelectionSearchChange = (val: boolean) => {
+const handleSelectionSearchChange = async (val: boolean) => {
   enableSelectionSearch.value = val
-  void updateSetting('enable_selection_search', String(val))
+  await updateSetting('enable_selection_search', String(val))
 }
 
 // 页面加载时获取设置

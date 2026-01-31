@@ -73,6 +73,14 @@ func (s *TrayService) InitFromSettings() {
 	s.minimizeToTrayEnabled = minimizeEnabled
 	s.mu.Unlock()
 
+	// 记录初始化日志
+	if s.app != nil {
+		s.app.Logger.Info("tray settings initialized",
+			"trayVisible", trayVisible,
+			"minimizeEnabled", minimizeEnabled,
+		)
+	}
+
 	if trayVisible {
 		s.systray.Show()
 	} else {
