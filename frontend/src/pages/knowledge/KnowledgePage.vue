@@ -226,7 +226,7 @@ onMounted(() => {
             type="button"
             :class="
               cn(
-                'group flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors',
+                'group flex h-10 w-full items-center gap-2 rounded-lg px-2 text-left text-sm font-normal transition-colors',
                 selectedLibraryId === lib.id
                   ? 'bg-accent text-accent-foreground'
                   : 'text-foreground hover:bg-accent/50'

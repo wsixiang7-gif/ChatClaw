@@ -135,19 +135,20 @@ onMounted(() => {
           </div>
         </div>
 
-        <button
-          v-for="a in agents"
-          :key="a.id"
-          :class="
-            cn(
-              'group flex h-11 w-full items-center gap-2 rounded px-2 text-left outline-none transition-colors',
-              a.id === activeAgentId
-                ? 'bg-zinc-100 text-foreground dark:bg-accent'
-                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-            )
-          "
-          @click="activeAgentId = a.id"
-        >
+        <div class="flex flex-col gap-1.5">
+          <button
+            v-for="a in agents"
+            :key="a.id"
+            :class="
+              cn(
+                'group flex h-11 w-full items-center gap-2 rounded px-2 text-left outline-none transition-colors',
+                a.id === activeAgentId
+                  ? 'bg-zinc-100 text-foreground dark:bg-accent'
+                  : 'bg-white text-muted-foreground shadow-[0px_1px_4px_0px_rgba(0,0,0,0.1)] hover:bg-accent/50 hover:text-foreground dark:bg-zinc-800/50 dark:shadow-[0px_1px_4px_0px_rgba(255,255,255,0.05)]'
+              )
+            "
+            @click="activeAgentId = a.id"
+          >
           <div
             class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border bg-white text-foreground dark:border-white/15 dark:bg-white/5"
           >
@@ -156,7 +157,7 @@ onMounted(() => {
           </div>
 
           <div class="min-w-0 flex-1">
-            <div class="truncate text-sm font-medium">
+            <div class="truncate text-sm font-normal">
               {{ a.name }}
             </div>
           </div>
@@ -171,7 +172,8 @@ onMounted(() => {
           >
             <IconSettings class="size-4 opacity-80 group-hover:opacity-100" />
           </Button>
-        </button>
+          </button>
+        </div>
       </div>
     </aside>
 
