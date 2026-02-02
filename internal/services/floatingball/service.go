@@ -252,11 +252,19 @@ func (s *FloatingBallService) SetDragging(dragging bool) {
 		return
 	}
 
-	// 拖拽结束：如果没有发生有效移动，不做 snap（避免“单击就贴边缩小”，影响双击）
-	if !s.dragMoved {
-		s.debugLog("drag_end_snap:skip_no_move", map[string]any{})
+	// 拖拽结束：用“起点 vs 当前点”的位置差来判定是否真实拖动，
+	// 避免由于 ignoreMoveUntil/平台事件顺序导致 dragMoved 没被置位，从而跳过 snap，
+	// 进而 dock 状态残留（会让窗口被误判为仍贴边，最终强制贴回边缘）。
+	relX2, relY2 := s.win.RelativePosition()
+	if abs(relX2-s.dragStartX) <= 2 && abs(relY2-s.dragStartY) <= 2 {
+		s.dragMoved = false
+		s.debugLog("drag_end_snap:skip_no_move", map[string]any{
+			"startX": s.dragStartX, "startY": s.dragStartY,
+			"endX": relX2, "endY": relY2,
+		})
 		return
 	}
+	s.dragMoved = true
 
 	// 拖拽结束：稍作延迟等待系统最终位置稳定，然后立刻判断贴边/对齐（不在这里缩小）
 	time.AfterFunc(60*time.Millisecond, func() {
@@ -348,6 +356,7 @@ func (s *FloatingBallService) ensureLocked() *application.WebviewWindow {
 
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar: true,
+			WindowMask:      floatingBallWindowMask(),
 		},
 		Mac: application.MacWindow{
 			Backdrop:     application.MacBackdropTransparent,
@@ -389,9 +398,6 @@ func (s *FloatingBallService) onWindowDidMove() {
 	if !s.visible {
 		return
 	}
-	if time.Now().Before(s.ignoreMoveUntil) {
-		return
-	}
 	// 拖拽中不自动贴边/缩小
 	if s.dragging {
 		// 记录是否发生有效移动（阈值 2px）
@@ -400,6 +406,11 @@ func (s *FloatingBallService) onWindowDidMove() {
 			s.dragMoved = true
 		}
 		s.debugLog("WindowDidMove:skip_dragging", map[string]any{})
+		return
+	}
+	// ignoreMoveUntil 用于屏蔽“代码主动 SetPosition/SetSize”导致的 move
+	// 但不能影响拖拽移动的检测（上面已提前处理 dragging）
+	if time.Now().Before(s.ignoreMoveUntil) {
 		return
 	}
 
@@ -687,6 +698,10 @@ func (s *FloatingBallService) setSizeLocked(width, height int) {
 	if s.win == nil {
 		return
 	}
+	// Windows: keep a fixed size so the window mask stays correct (ball shape)
+	if isWindowsFixedSize() {
+		return
+	}
 	s.ignoreMoveUntil = time.Now().Add(250 * time.Millisecond)
 	s.win.SetSize(width, height)
 }
@@ -722,17 +737,22 @@ func (s *FloatingBallService) collapseToYLocked(y int) {
 		return
 	}
 	s.collapsed = true
+	// Windows keeps fixed size (mask). Other platforms resize.
 	s.setSizeLocked(collapsedWidth, ballSize)
 
 	y = clamp(y, 0, work.Height-ballSize)
 	x := 0
+	currentWidth := collapsedWidth
+	if isWindowsFixedSize() {
+		currentWidth = ballSize
+	}
 	switch s.dock {
 	case DockLeft:
-		x = -(collapsedWidth - collapsedVisible)
+		x = -(currentWidth - collapsedVisible)
 	case DockRight:
 		x = work.Width - collapsedVisible
 	}
-	s.debugLog("collapse", map[string]any{"dock": s.dock, "x": x, "y": y, "w": collapsedWidth, "h": ballSize})
+	s.debugLog("collapse", map[string]any{"dock": s.dock, "x": x, "y": y, "w": currentWidth, "h": ballSize})
 	s.setRelativePositionLocked(x, y)
 }
 
