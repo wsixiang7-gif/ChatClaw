@@ -12,6 +12,11 @@ export default {
   tabs: {
     newTab: '新标签页',
   },
+  tab: {
+    close: '关闭标签页',
+    closeOthers: '关闭其他标签页',
+    closeAll: '关闭所有标签页',
+  },
   hello: {
     inputPlaceholder: '请在下方输入你的名字 👇',
     greetButton: '打招呼',

@@ -12,6 +12,11 @@ export default {
   tabs: {
     newTab: 'New Tab',
   },
+  tab: {
+    close: 'Close Tab',
+    closeOthers: 'Close Other Tabs',
+    closeAll: 'Close All Tabs',
+  },
   hello: {
     inputPlaceholder: 'Please enter your name below 👇',
     greetButton: 'Greet',
