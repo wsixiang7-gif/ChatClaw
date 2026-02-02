@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n'
 import { Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import LogoIcon from '@/assets/images/logo.svg'
 import { Dialogs } from '@wailsio/runtime'
 import { ProviderIcon } from '@/components/ui/provider-icon'
@@ -62,9 +61,6 @@ const icon = ref<string>('') // data URL
 const iconChanged = ref(false)
 
 // model tab fields
-const temperatureEnabled = ref(true)
-const topPEnabled = ref(true)
-const maxTokensEnabled = ref(false)
 const temperature = ref(0.5)
 const topP = ref(1.0)
 const contextCount = ref(50)
@@ -213,10 +209,10 @@ const handleSave = async () => {
       icon: iconChanged.value ? icon.value : null,
       default_llm_provider_id: wantsModelUpdate ? modelProviderId.value : null,
       default_llm_model_id: wantsModelUpdate ? modelId.value : null,
-      llm_temperature: temperatureEnabled.value ? temperature.value : null,
-      llm_top_p: topPEnabled.value ? topP.value : null,
+      llm_temperature: temperature.value,
+      llm_top_p: topP.value,
       context_count: contextCount.value,
-      llm_max_tokens: maxTokensEnabled.value ? maxTokens.value : null,
+      llm_max_tokens: maxTokens.value,
     })
     if (!updated) {
       throw new Error(t('assistant.errors.updateFailed'))
@@ -316,16 +312,15 @@ const handleDelete = async () => {
             >
               <!-- 模型设置 -->
               <div v-if="tab === 'model'" class="flex flex-col gap-5">
-                <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between gap-4">
                   <div class="text-sm font-medium text-foreground">
                     {{ t('assistant.settings.model.defaultModel') }}
                   </div>
-                  <div
-                    class="flex items-center justify-between rounded-md border border-border px-3 py-2"
-                  >
-                    <div class="flex min-w-0 items-center gap-2">
-                      <Select :model-value="modelKey" @update:model-value="onModelKeyChange">
-                        <SelectTrigger class="h-9 w-[240px] justify-start">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <Select :model-value="modelKey" @update:model-value="onModelKeyChange">
+                      <SelectTrigger
+                        class="h-9 w-[240px] justify-start rounded-md border border-border bg-background"
+                      >
                           <div v-if="hasDefaultModel" class="flex min-w-0 items-center gap-2">
                             <ProviderIcon
                               :icon="modelProviderId"
@@ -339,52 +334,44 @@ const handleDelete = async () => {
                           <div v-else class="text-sm text-muted-foreground">
                             {{ t('assistant.settings.model.noDefaultModel') }}
                           </div>
-                        </SelectTrigger>
-                        <SelectContent class="max-h-[260px]">
-                          <SelectGroup>
-                            <SelectLabel>{{
-                              t('assistant.settings.model.defaultModel')
-                            }}</SelectLabel>
-                            <template
-                              v-for="pw in providersWithModels"
-                              :key="pw.provider.provider_id"
-                            >
-                              <SelectLabel class="mt-2">
-                                {{ pw.provider.name }}
-                              </SelectLabel>
-                              <template v-for="g in pw.model_groups" :key="g.type">
-                                <template v-if="g.type === 'llm'">
-                                  <SelectItem
-                                    v-for="m in g.models"
-                                    :key="pw.provider.provider_id + '::' + m.model_id"
-                                    :value="pw.provider.provider_id + '::' + m.model_id"
-                                  >
-                                    {{ m.name }}
-                                  </SelectItem>
-                                </template>
+                      </SelectTrigger>
+                      <SelectContent class="max-h-[260px]">
+                        <SelectGroup>
+                          <SelectLabel>{{ t('assistant.settings.model.defaultModel') }}</SelectLabel>
+                          <template v-for="pw in providersWithModels" :key="pw.provider.provider_id">
+                            <SelectLabel class="mt-2">
+                              {{ pw.provider.name }}
+                            </SelectLabel>
+                            <template v-for="g in pw.model_groups" :key="g.type">
+                              <template v-if="g.type === 'llm'">
+                                <SelectItem
+                                  v-for="m in g.models"
+                                  :key="pw.provider.provider_id + '::' + m.model_id"
+                                  :value="pw.provider.provider_id + '::' + m.model_id"
+                                >
+                                  {{ m.name }}
+                                </SelectItem>
                               </template>
                             </template>
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                          </template>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
 
-                    <div class="flex items-center gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        :disabled="saving || !hasDefaultModel"
-                        :title="t('assistant.settings.model.clear')"
-                        @click="clearDefaultModel"
-                      >
-                        <Trash2 class="size-4" />
-                      </Button>
-                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      :disabled="saving || !hasDefaultModel"
+                      :title="t('assistant.settings.model.clear')"
+                      @click="clearDefaultModel"
+                    >
+                      <Trash2 class="size-4" />
+                    </Button>
                   </div>
                 </div>
 
-                <div class="flex items-center justify-between gap-4">
-                  <div class="flex flex-col">
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
                     <div class="text-sm font-medium text-foreground">
                       {{ t('assistant.settings.model.temperature') }}
                     </div>
@@ -392,29 +379,24 @@ const handleDelete = async () => {
                       {{ t('assistant.settings.model.temperatureHint') }}
                     </div>
                   </div>
-                  <Switch v-model:checked="temperatureEnabled" />
-                </div>
-                <div v-if="temperatureEnabled" class="flex items-center gap-3">
-                  <div class="w-full">
-                    <SliderWithTicks
-                      v-model="temperature"
-                      :min="0"
-                      :max="2"
-                      :step="0.05"
-                      :ticks="[
-                        { value: 0, label: '0' },
-                        { value: 0.5, label: '0.5' },
-                        { value: 1, label: '1' },
-                        { value: 1.5, label: '1.5' },
-                        { value: 2, label: '2' },
-                      ]"
-                      :format-value="(v) => v.toFixed(2)"
-                    />
-                  </div>
+                  <SliderWithTicks
+                    v-model="temperature"
+                    :min="0"
+                    :max="2"
+                    :step="0.05"
+                    :ticks="[
+                      { value: 0, label: '0' },
+                      { value: 0.5, label: '0.5' },
+                      { value: 1, label: '1' },
+                      { value: 1.5, label: '1.5' },
+                      { value: 2, label: '2' },
+                    ]"
+                    :format-value="(v) => v.toFixed(2)"
+                  />
                 </div>
 
-                <div class="flex items-center justify-between gap-4">
-                  <div class="flex flex-col">
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
                     <div class="text-sm font-medium text-foreground">
                       {{ t('assistant.settings.model.topP') }}
                     </div>
@@ -422,25 +404,20 @@ const handleDelete = async () => {
                       {{ t('assistant.settings.model.topPHint') }}
                     </div>
                   </div>
-                  <Switch v-model:checked="topPEnabled" />
-                </div>
-                <div v-if="topPEnabled" class="flex items-center gap-3">
-                  <div class="w-full">
-                    <SliderWithTicks
-                      v-model="topP"
-                      :min="0"
-                      :max="1"
-                      :step="0.01"
-                      :ticks="[
-                        { value: 0, label: '0' },
-                        { value: 0.25, label: '0.25' },
-                        { value: 0.5, label: '0.5' },
-                        { value: 0.75, label: '0.75' },
-                        { value: 1, label: '1' },
-                      ]"
-                      :format-value="(v) => v.toFixed(2)"
-                    />
-                  </div>
+                  <SliderWithTicks
+                    v-model="topP"
+                    :min="0"
+                    :max="1"
+                    :step="0.01"
+                    :ticks="[
+                      { value: 0, label: '0' },
+                      { value: 0.25, label: '0.25' },
+                      { value: 0.5, label: '0.5' },
+                      { value: 0.75, label: '0.75' },
+                      { value: 1, label: '1' },
+                    ]"
+                    :format-value="(v) => v.toFixed(2)"
+                  />
                 </div>
 
                 <div class="flex flex-col gap-2">
@@ -468,19 +445,16 @@ const handleDelete = async () => {
                   />
                 </div>
 
-                <div class="flex flex-col gap-1.5">
-                  <div class="flex items-center justify-between gap-4">
-                    <div class="text-sm font-medium text-foreground">
-                      {{ t('assistant.settings.model.maxTokens') }}
-                    </div>
-                    <Switch v-model:checked="maxTokensEnabled" />
+                <div class="flex items-center justify-between gap-4">
+                  <div class="text-sm font-medium text-foreground">
+                    {{ t('assistant.settings.model.maxTokens') }}
                   </div>
                   <Input
-                    v-if="maxTokensEnabled"
                     v-model.number="maxTokens"
                     type="number"
                     min="1"
                     max="200000"
+                    class="h-9 w-[160px]"
                   />
                 </div>
               </div>
@@ -493,7 +467,7 @@ const handleDelete = async () => {
                     type="button"
                     @click="handlePickIcon"
                   >
-                    <img v-if="icon" :src="icon" class="size-[44px] rounded-md object-cover" />
+                    <img v-if="icon" :src="icon" class="size-[44px] rounded-md object-contain" />
                     <LogoIcon v-else class="size-[44px]" />
                   </button>
                   <div class="text-xs text-muted-foreground">

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus, Settings2 } from 'lucide-vue-next'
+import { Plus } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import LogoIcon from '@/assets/images/logo.svg'
+import IconSettings from '@/assets/icons/settings.svg'
 import CreateAgentDialog from './components/CreateAgentDialog.vue'
 import AgentSettingsDialog from './components/AgentSettingsDialog.vue'
 import { AgentsService, type Agent } from '@bindings/willchat/internal/services/agents'
@@ -149,7 +150,11 @@ onMounted(() => {
           <div
             class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
           >
-            <img v-if="a.icon" :src="a.icon" class="size-8 rounded-md object-cover" />
+            <img
+              v-if="a.icon"
+              :src="a.icon"
+              class="size-8 rounded-md bg-white object-contain p-1 dark:bg-white/5"
+            />
             <LogoIcon v-else class="size-5 opacity-90" />
           </div>
 
@@ -167,7 +172,7 @@ onMounted(() => {
             :title="t('assistant.actions.settings')"
             @click.stop="openSettings(a)"
           >
-            <Settings2 class="size-4" />
+            <IconSettings class="size-4 opacity-80 group-hover:opacity-100" />
           </Button>
         </button>
       </div>

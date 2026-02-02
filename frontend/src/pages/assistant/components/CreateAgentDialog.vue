@@ -82,7 +82,7 @@ const handleCreate = () => {
             type="button"
             @click="handlePickIcon"
           >
-            <img v-if="icon" :src="icon" class="size-[44px] rounded-md object-cover" />
+            <img v-if="icon" :src="icon" class="size-[44px] rounded-md object-contain" />
             <LogoIcon v-else class="size-[44px]" />
           </button>
           <div class="text-xs text-muted-foreground">
