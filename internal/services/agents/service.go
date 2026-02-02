@@ -1,0 +1,326 @@
+package agents
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"strings"
+	"time"
+
+	"willchat/internal/errs"
+	"willchat/internal/sqlite"
+
+	"github.com/uptrace/bun"
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
+
+// AgentsService 助手服务（暴露给前端调用）
+type AgentsService struct {
+	app *application.App
+}
+
+func NewAgentsService(app *application.App) *AgentsService {
+	return &AgentsService{app: app}
+}
+
+func (s *AgentsService) db() (*bun.DB, error) {
+	db := sqlite.DB()
+	if db == nil {
+		return nil, errs.New("error.sqlite_not_initialized")
+	}
+	return db, nil
+}
+
+func (s *AgentsService) ListAgents() ([]Agent, error) {
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	models := make([]agentModel, 0)
+	if err := db.NewSelect().
+		Model(&models).
+		OrderExpr("updated_at DESC, id DESC").
+		Scan(ctx); err != nil {
+		return nil, errs.Wrap("error.agent_list_failed", err)
+	}
+
+	out := make([]Agent, 0, len(models))
+	for i := range models {
+		out = append(out, models[i].toDTO())
+	}
+	return out, nil
+}
+
+func (s *AgentsService) GetAgent(id int64) (*Agent, error) {
+	if id <= 0 {
+		return nil, errs.New("error.agent_id_required")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var m agentModel
+	if err := db.NewSelect().
+		Model(&m).
+		Where("id = ?", id).
+		Limit(1).
+		Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.Newf("error.agent_not_found", map[string]any{"ID": id})
+		}
+		return nil, errs.Wrap("error.agent_read_failed", err)
+	}
+
+	dto := m.toDTO()
+	return &dto, nil
+}
+
+func (s *AgentsService) CreateAgent(input CreateAgentInput) (*Agent, error) {
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
+		return nil, errs.New("error.agent_name_required")
+	}
+	if len([]rune(name)) > 100 {
+		return nil, errs.New("error.agent_name_too_long")
+	}
+
+	prompt := strings.TrimSpace(input.Prompt)
+	if prompt == "" {
+		return nil, errs.New("error.agent_prompt_required")
+	}
+	if len([]rune(prompt)) > 1000 {
+		return nil, errs.New("error.agent_prompt_too_long")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	defaultProviderID, defaultModelID, err := pickDefaultLLM(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+
+	m := &agentModel{
+		Name:   name,
+		Prompt: prompt,
+		Icon:   "",
+
+		DefaultLLMProviderID: defaultProviderID,
+		DefaultLLMModelID:    defaultModelID,
+		LLMTemperature:       0.5,
+		LLMTopP:              1.0,
+		ContextCount:         50,
+		LLMMaxTokens:         1000,
+	}
+
+	if _, err := db.NewInsert().Model(m).Exec(ctx); err != nil {
+		return nil, errs.Wrap("error.agent_create_failed", err)
+	}
+
+	dto := m.toDTO()
+	return &dto, nil
+}
+
+func (s *AgentsService) UpdateAgent(id int64, input UpdateAgentInput) (*Agent, error) {
+	if id <= 0 {
+		return nil, errs.New("error.agent_id_required")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// 读取旧值（用于 provider/model 的组合校验）
+	existing, err := s.GetAgent(id)
+	if err != nil {
+		return nil, err
+	}
+
+	newProviderID := existing.DefaultLLMProviderID
+	newModelID := existing.DefaultLLMModelID
+
+	if input.DefaultLLMProviderID != nil {
+		newProviderID = strings.TrimSpace(*input.DefaultLLMProviderID)
+		if newProviderID == "" {
+			return nil, errs.New("error.agent_default_llm_provider_required")
+		}
+	}
+	if input.DefaultLLMModelID != nil {
+		newModelID = strings.TrimSpace(*input.DefaultLLMModelID)
+		if newModelID == "" {
+			return nil, errs.New("error.agent_default_llm_model_required")
+		}
+	}
+	if (input.DefaultLLMProviderID != nil) || (input.DefaultLLMModelID != nil) {
+		if err := ensureLLMModelExists(ctx, db, newProviderID, newModelID); err != nil {
+			return nil, err
+		}
+	}
+
+	q := db.NewUpdate().
+		Model((*agentModel)(nil)).
+		Where("id = ?", id).
+		Set("updated_at = ?", time.Now().UTC())
+
+	if input.Name != nil {
+		name := strings.TrimSpace(*input.Name)
+		if name == "" {
+			return nil, errs.New("error.agent_name_required")
+		}
+		if len([]rune(name)) > 100 {
+			return nil, errs.New("error.agent_name_too_long")
+		}
+		q = q.Set("name = ?", name)
+	}
+
+	if input.Prompt != nil {
+		prompt := strings.TrimSpace(*input.Prompt)
+		if prompt == "" {
+			return nil, errs.New("error.agent_prompt_required")
+		}
+		if len([]rune(prompt)) > 1000 {
+			return nil, errs.New("error.agent_prompt_too_long")
+		}
+		q = q.Set("prompt = ?", prompt)
+	}
+
+	if input.Icon != nil {
+		q = q.Set("icon = ?", strings.TrimSpace(*input.Icon))
+	}
+
+	if input.DefaultLLMProviderID != nil {
+		q = q.Set("default_llm_provider_id = ?", newProviderID)
+	}
+	if input.DefaultLLMModelID != nil {
+		q = q.Set("default_llm_model_id = ?", newModelID)
+	}
+
+	if input.LLMTemperature != nil {
+		q = q.Set("llm_temperature = ?", *input.LLMTemperature)
+	}
+	if input.LLMTopP != nil {
+		q = q.Set("llm_top_p = ?", *input.LLMTopP)
+	}
+	if input.ContextCount != nil {
+		q = q.Set("context_count = ?", *input.ContextCount)
+	}
+	if input.LLMMaxTokens != nil {
+		q = q.Set("llm_max_tokens = ?", *input.LLMMaxTokens)
+	}
+
+	result, err := q.Exec(ctx)
+	if err != nil {
+		return nil, errs.Wrap("error.agent_update_failed", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return nil, errs.Newf("error.agent_not_found", map[string]any{"ID": id})
+	}
+
+	return s.GetAgent(id)
+}
+
+func (s *AgentsService) DeleteAgent(id int64) error {
+	if id <= 0 {
+		return errs.New("error.agent_id_required")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := db.NewDelete().
+		Model((*agentModel)(nil)).
+		Where("id = ?", id).
+		Exec(ctx)
+	if err != nil {
+		return errs.Wrap("error.agent_delete_failed", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return errs.Newf("error.agent_not_found", map[string]any{"ID": id})
+	}
+	return nil
+}
+
+func ensureLLMModelExists(ctx context.Context, db *bun.DB, providerID, modelID string) error {
+	providerID = strings.TrimSpace(providerID)
+	modelID = strings.TrimSpace(modelID)
+	if providerID == "" {
+		return errs.New("error.agent_default_llm_provider_required")
+	}
+	if modelID == "" {
+		return errs.New("error.agent_default_llm_model_required")
+	}
+
+	cnt, err := db.NewSelect().
+		Table("models").
+		Where("provider_id = ?", providerID).
+		Where("model_id = ?", modelID).
+		Where("type = ?", "llm").
+		Count(ctx)
+	if err != nil {
+		return errs.Wrap("error.agent_llm_model_check_failed", err)
+	}
+	if cnt == 0 {
+		return errs.Newf("error.agent_llm_model_not_found", map[string]any{
+			"ProviderID": providerID,
+			"ModelID":    modelID,
+		})
+	}
+	return nil
+}
+
+func pickDefaultLLM(ctx context.Context, db *bun.DB) (providerID string, modelID string, err error) {
+	// 优先使用 UI 截图中的默认值（智谱 GLM-4.5-Flash）
+	const preferredProvider = "zhipu"
+	const preferredModel = "glm-4.5-flash"
+
+	if err := ensureLLMModelExists(ctx, db, preferredProvider, preferredModel); err == nil {
+		return preferredProvider, preferredModel, nil
+	}
+
+	// 回退：选第一个可用的 llm 模型
+	type row struct {
+		ProviderID string `bun:"provider_id"`
+		ModelID    string `bun:"model_id"`
+	}
+	var r row
+	if err := db.NewSelect().
+		Table("models").
+		Column("provider_id", "model_id").
+		Where("type = ?", "llm").
+		OrderExpr("provider_id ASC, sort_order ASC, id ASC").
+		Limit(1).
+		Scan(ctx, &r); err != nil {
+		return "", "", errs.Wrap("error.agent_pick_default_llm_failed", err)
+	}
+	if r.ProviderID == "" || r.ModelID == "" {
+		return "", "", errs.New("error.agent_no_llm_model_available")
+	}
+	return r.ProviderID, r.ModelID, nil
+}

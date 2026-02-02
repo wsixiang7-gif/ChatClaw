@@ -138,4 +138,66 @@ export default {
       view: '查看',
     },
   },
+  assistant: {
+    modes: {
+      personal: '个人',
+      team: '团队',
+    },
+    empty: '暂无助手，点击右上角 + 创建',
+    create: {
+      title: '创建助手',
+    },
+    fields: {
+      name: '名称',
+      namePlaceholder: '请输入',
+      prompt: '提示词',
+      promptPlaceholder: '在此输入您的提示词',
+    },
+    actions: {
+      cancel: '取消',
+      create: '创建',
+      save: '保存',
+      settings: '助手设置',
+    },
+    placeholders: {
+      noAgentSelected: '请选择一个助手',
+      chatComingSoon: '这里将展示助手对应的聊天内容（话题列表暂未实现）。',
+    },
+    errors: {
+      loadFailed: '加载助手列表失败',
+      createFailed: '创建助手失败',
+      updateFailed: '更新助手失败',
+      deleteFailed: '删除助手失败',
+    },
+    toasts: {
+      created: '助手创建成功',
+      updated: '助手更新成功',
+      deleted: '助手已删除',
+    },
+    settings: {
+      title: '助手设置',
+      tabs: {
+        model: '模型设置',
+        prompt: '提示词设置',
+        delete: '删除助手',
+      },
+      model: {
+        defaultModel: '默认模型',
+        defaultModelHint: '当前助手默认模型',
+        temperature: '模型温度',
+        temperatureHint: '控制回复的随机性',
+        topP: 'Top-P',
+        topPHint: '控制采样范围',
+        contextCount: '上下文数',
+        maxTokens: '最大 Token 数',
+      },
+      delete: {
+        title: '删除助手',
+        hint: '删除助手后，将清理所有的对话记录，操作不可逆',
+        action: '删除',
+        confirmTitle: '确认删除',
+        confirmDesc: '确定要删除助手「{name}」吗？此操作无法撤销。',
+      },
+    },
+  },
 }

@@ -138,4 +138,66 @@ export default {
       deleting: 'Deleting...',
     },
   },
+  assistant: {
+    modes: {
+      personal: 'Personal',
+      team: 'Team',
+    },
+    empty: 'No agents yet. Click + to create one.',
+    create: {
+      title: 'Create Agent',
+    },
+    fields: {
+      name: 'Name',
+      namePlaceholder: 'Enter name',
+      prompt: 'Prompt',
+      promptPlaceholder: 'Enter your prompt here',
+    },
+    actions: {
+      cancel: 'Cancel',
+      create: 'Create',
+      save: 'Save',
+      settings: 'Agent Settings',
+    },
+    placeholders: {
+      noAgentSelected: 'Select an agent',
+      chatComingSoon: 'Chat content will be shown here (topics list is not implemented yet).',
+    },
+    errors: {
+      loadFailed: 'Failed to load agents',
+      createFailed: 'Failed to create agent',
+      updateFailed: 'Failed to update agent',
+      deleteFailed: 'Failed to delete agent',
+    },
+    toasts: {
+      created: 'Agent created',
+      updated: 'Agent updated',
+      deleted: 'Agent deleted',
+    },
+    settings: {
+      title: 'Agent Settings',
+      tabs: {
+        model: 'Model',
+        prompt: 'Prompt',
+        delete: 'Delete',
+      },
+      model: {
+        defaultModel: 'Default Model',
+        defaultModelHint: 'Current default model for this agent',
+        temperature: 'Temperature',
+        temperatureHint: 'Controls randomness',
+        topP: 'Top-P',
+        topPHint: 'Controls sampling range',
+        contextCount: 'Context Count',
+        maxTokens: 'Max Tokens',
+      },
+      delete: {
+        title: 'Delete Agent',
+        hint: 'Deleting the agent will remove all related conversations. This cannot be undone.',
+        action: 'Delete',
+        confirmTitle: 'Confirm Delete',
+        confirmDesc: 'Are you sure you want to delete "{name}"? This action cannot be undone.',
+      },
+    },
+  },
 }
