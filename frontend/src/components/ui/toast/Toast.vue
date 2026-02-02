@@ -8,11 +8,9 @@ const props = withDefaults(
     class?: string
     variant?: 'default' | 'success' | 'error'
     duration?: number
-    open?: boolean
   }>(),
   {
     variant: 'default',
-    open: true,
   }
 )
 
@@ -23,11 +21,11 @@ const emit = defineEmits<{
 const variantClasses = computed(() => {
   switch (props.variant) {
     case 'success':
-      return 'border-green-500 bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200 dark:border-green-800'
+      return 'border-border bg-popover text-popover-foreground'
     case 'error':
-      return 'border-destructive bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200 dark:border-red-800'
+      return 'border-border bg-popover text-popover-foreground'
     default:
-      return 'border-border bg-background text-foreground'
+      return 'border-border bg-popover text-popover-foreground'
   }
 })
 </script>
@@ -36,7 +34,7 @@ const variantClasses = computed(() => {
   <ToastRoot
     :class="
       cn(
-        'group pointer-events-auto relative flex w-full items-center justify-between gap-4 overflow-hidden rounded-lg border p-4 shadow-lg transition-all',
+        'group pointer-events-auto relative flex w-full items-center justify-between gap-4 overflow-hidden rounded-lg border p-4 shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10 transition-all',
         'data-[state=open]:animate-in data-[state=closed]:animate-out',
         'data-[swipe=end]:animate-out data-[state=closed]:fade-out-80',
         'data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full',
@@ -44,8 +42,7 @@ const variantClasses = computed(() => {
         $props.class
       )
     "
-    :duration="duration"
-    :open="open"
+    :duration="props.duration"
     @update:open="emit('update:open', $event)"
   >
     <slot />

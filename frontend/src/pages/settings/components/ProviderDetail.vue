@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from '@/components/ui/toast'
+import { getErrorMessage } from '@/composables/useErrorMessage'
 import { Eye, EyeOff, LoaderCircle, Plus, Pencil, Trash2 } from 'lucide-vue-next'
 import ModelIcon from '@/assets/icons/model.svg'
 import { Switch } from '@/components/ui/switch'
@@ -36,6 +37,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { SettingsService } from '@/../bindings/willchat/internal/services/settings'
 
 // Azure extra_config 类型
 interface AzureExtraConfig {
@@ -53,34 +55,6 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-
-// 提取 Wails 错误消息
-const getErrorMessage = (error: unknown): string => {
-  let msg = ''
-
-  // 先获取 message 字段
-  if (error instanceof Error) {
-    msg = error.message
-  } else if (typeof error === 'string') {
-    msg = error
-  } else if (typeof error === 'object' && error !== null && 'message' in error) {
-    msg = String((error as { message: unknown }).message)
-  } else {
-    msg = String(error)
-  }
-
-  // 如果 message 是 JSON 字符串，尝试解析并提取内部的 message
-  if (msg.startsWith('{')) {
-    try {
-      const parsed = JSON.parse(msg)
-      if (parsed.message) return parsed.message
-    } catch {
-      // 解析失败，返回原始消息
-    }
-  }
-
-  return msg
-}
 
 // 本地表单状态
 const localEnabled = ref(false)
@@ -185,21 +159,54 @@ const validationMessage = computed(() => {
   return ''
 })
 
+const isUsedByGlobalEmbedding = async (providerId: string): Promise<boolean> => {
+  try {
+    const [p, m] = await Promise.all([
+      SettingsService.Get('embedding_provider_id'),
+      SettingsService.Get('embedding_model_id'),
+    ])
+    const embeddingProviderId = p?.value?.trim() || ''
+    const embeddingModelId = m?.value?.trim() || ''
+    return embeddingProviderId === providerId && embeddingModelId !== ''
+  } catch (error) {
+    console.error('Failed to read embedding settings:', error)
+    return false
+  }
+}
+
 // 获取模型组的翻译标题
 const getModelGroupTitle = (type: string) => {
-  return type === 'llm'
-    ? t('settings.modelService.llmModels')
-    : t('settings.modelService.embeddingModels')
+  switch (type) {
+    case 'llm':
+      return t('settings.modelService.llmModels')
+    case 'embedding':
+      return t('settings.modelService.embeddingModels')
+    case 'rerank':
+      return t('settings.modelService.rerankModels')
+    default:
+      return type
+  }
 }
 
 // 处理开关切换
-const handleToggle = (checked: boolean) => {
+const handleToggle = async (checked: boolean) => {
   if (!props.providerWithModels) return
 
   // 如果要启用，需要验证表单
   if (checked && !isFormValid.value) {
     // 不允许启用，保持关闭状态
     return
+  }
+
+  // 如果要关闭，且该 provider 正被用作全局嵌入模型，则禁止关闭并提示
+  if (!checked) {
+    const pid = props.providerWithModels.provider.provider_id
+    if (await isUsedByGlobalEmbedding(pid)) {
+      toast.error(t('settings.modelService.disableBlockedByEmbedding'))
+      // 保持开启
+      localEnabled.value = true
+      return
+    }
   }
 
   // 更新本地状态
@@ -223,6 +230,7 @@ const saveEnabled = async (enabled: boolean) => {
     }
   } catch (error) {
     console.error('Failed to update provider:', error)
+    toast.error(getErrorMessage(error))
     // 回滚本地状态
     localEnabled.value = props.providerWithModels.provider.enabled
   } finally {

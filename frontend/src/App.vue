@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toast'
 import { useNavigationStore } from '@/stores'
 import SettingsPage from '@/pages/settings/SettingsPage.vue'
 import AssistantPage from '@/pages/assistant/AssistantPage.vue'
+import KnowledgePage from '@/pages/knowledge/KnowledgePage.vue'
 
 const { t } = useI18n()
 const navigationStore = useNavigationStore()
@@ -20,6 +21,7 @@ const activeTab = computed(() => navigationStore.activeTab)
  */
 const showSettings = computed(() => activeTab.value?.module === 'settings')
 const showAssistant = computed(() => activeTab.value?.module === 'assistant')
+const showKnowledge = computed(() => activeTab.value?.module === 'knowledge')
 
 /**
  * 默认至少保持 1 个标签页：
@@ -42,6 +44,8 @@ watch(
   <MainLayout>
     <!-- 设置页面 -->
     <SettingsPage v-if="showSettings" />
+    <!-- 知识库页面 -->
+    <KnowledgePage v-else-if="showKnowledge" />
 
     <!-- AI助手页面 -->
     <AssistantPage v-else-if="showAssistant" />
