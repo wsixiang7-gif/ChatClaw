@@ -5,6 +5,7 @@ import IconAgentAdd from '@/assets/icons/agent-add.svg'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
+import { getErrorMessage } from '@/composables/useErrorMessage'
 import LogoIcon from '@/assets/images/logo.svg'
 import IconSettings from '@/assets/icons/settings.svg'
 import CreateAgentDialog from './components/CreateAgentDialog.vue'
@@ -38,8 +39,8 @@ const loadAgents = async () => {
     if (activeAgentId.value == null && list.length > 0) {
       activeAgentId.value = list[0].id
     }
-  } catch (e: any) {
-    toast.error(e?.message ?? t('assistant.errors.loadFailed'))
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error) || t('assistant.errors.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -60,8 +61,8 @@ const handleCreate = async (data: { name: string; prompt: string; icon: string }
     agents.value = [created, ...agents.value]
     activeAgentId.value = created.id
     toast.success(t('assistant.toasts.created'))
-  } catch (e: any) {
-    toast.error(e?.message ?? t('assistant.errors.createFailed'))
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error) || t('assistant.errors.createFailed'))
   } finally {
     loading.value = false
   }
@@ -111,10 +112,7 @@ onMounted(() => {
           </button>
           <button
             :class="
-              cn(
-                'rounded px-3 py-1 text-sm transition-colors',
-                'cursor-not-allowed opacity-50'
-              )
+              cn('rounded px-3 py-1 text-sm transition-colors', 'cursor-not-allowed opacity-50')
             "
             disabled
           >
@@ -153,11 +151,7 @@ onMounted(() => {
           <div
             class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border bg-white text-foreground dark:border-white/15 dark:bg-white/5"
           >
-            <img
-              v-if="a.icon"
-              :src="a.icon"
-              class="size-6 object-contain"
-            />
+            <img v-if="a.icon" :src="a.icon" class="size-6 object-contain" />
             <LogoIcon v-else class="size-6 opacity-90" />
           </div>
 

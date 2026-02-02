@@ -340,33 +340,3 @@ func ensureLLMModelExists(ctx context.Context, db *bun.DB, providerID, modelID s
 	}
 	return nil
 }
-
-func pickDefaultLLM(ctx context.Context, db *bun.DB) (providerID string, modelID string, err error) {
-	// 优先使用 UI 截图中的默认值（智谱 GLM-4.5-Flash）
-	const preferredProvider = "zhipu"
-	const preferredModel = "glm-4.5-flash"
-
-	if err := ensureLLMModelExists(ctx, db, preferredProvider, preferredModel); err == nil {
-		return preferredProvider, preferredModel, nil
-	}
-
-	// 回退：选第一个可用的 llm 模型
-	type row struct {
-		ProviderID string `bun:"provider_id"`
-		ModelID    string `bun:"model_id"`
-	}
-	var r row
-	if err := db.NewSelect().
-		Table("models").
-		Column("provider_id", "model_id").
-		Where("type = ?", "llm").
-		OrderExpr("provider_id ASC, sort_order ASC, id ASC").
-		Limit(1).
-		Scan(ctx, &r); err != nil {
-		return "", "", errs.Wrap("error.agent_pick_default_llm_failed", err)
-	}
-	if r.ProviderID == "" || r.ModelID == "" {
-		return "", "", errs.New("error.agent_no_llm_model_available")
-	}
-	return r.ProviderID, r.ModelID, nil
-}

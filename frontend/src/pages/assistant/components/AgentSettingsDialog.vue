@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
+import { getErrorMessage } from '@/composables/useErrorMessage'
 import { AgentsService, type Agent } from '@bindings/willchat/internal/services/agents'
 import {
   ProvidersService,
@@ -137,8 +138,9 @@ const loadModels = async () => {
         }
       }
     }
-  } catch {
-    // ignore in modal
+  } catch (error: unknown) {
+    // 弹窗内加载失败不阻塞用户操作，仅记录警告
+    console.warn('Failed to load models in dialog:', error)
   }
 }
 
@@ -220,8 +222,8 @@ const handleSave = async () => {
     emit('updated', updated)
     toast.success(t('assistant.toasts.updated'))
     emit('update:open', false)
-  } catch (e: any) {
-    toast.error(e?.message ?? t('assistant.errors.updateFailed'))
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error) || t('assistant.errors.updateFailed'))
   } finally {
     saving.value = false
   }
@@ -235,8 +237,8 @@ const handleDelete = async () => {
     emit('deleted', props.agent.id)
     toast.success(t('assistant.toasts.deleted'))
     emit('update:open', false)
-  } catch (e: any) {
-    toast.error(e?.message ?? t('assistant.errors.deleteFailed'))
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error) || t('assistant.errors.deleteFailed'))
   } finally {
     saving.value = false
     deleteConfirmOpen.value = false
@@ -246,10 +248,7 @@ const handleDelete = async () => {
 
 <template>
   <Dialog :open="open" @update:open="handleClose">
-    <DialogContent
-      size="lg"
-      class="gap-0 p-0"
-    >
+    <DialogContent size="lg" class="gap-0 p-0">
       <!-- 头部：标题（关闭按钮由 DialogContent 自带） -->
       <div class="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
         <div class="text-base font-semibold text-foreground">
@@ -321,24 +320,29 @@ const handleDelete = async () => {
                       <SelectTrigger
                         class="h-9 w-[240px] rounded-md border border-border bg-background"
                       >
-                          <div v-if="hasDefaultModel" class="flex min-w-0 items-center gap-2">
-                            <ProviderIcon
-                              :icon="modelProviderId"
-                              :size="16"
-                              class="text-foreground"
-                            />
-                            <div class="min-w-0 truncate text-sm font-medium text-foreground">
-                              {{ modelName || modelId }}
-                            </div>
+                        <div v-if="hasDefaultModel" class="flex min-w-0 items-center gap-2">
+                          <ProviderIcon
+                            :icon="modelProviderId"
+                            :size="16"
+                            class="text-foreground"
+                          />
+                          <div class="min-w-0 truncate text-sm font-medium text-foreground">
+                            {{ modelName || modelId }}
                           </div>
-                          <div v-else class="text-sm text-muted-foreground">
-                            {{ t('assistant.settings.model.noDefaultModel') }}
-                          </div>
+                        </div>
+                        <div v-else class="text-sm text-muted-foreground">
+                          {{ t('assistant.settings.model.noDefaultModel') }}
+                        </div>
                       </SelectTrigger>
                       <SelectContent class="max-h-[260px]">
                         <SelectGroup>
-                          <SelectLabel>{{ t('assistant.settings.model.defaultModel') }}</SelectLabel>
-                          <template v-for="pw in providersWithModels" :key="pw.provider.provider_id">
+                          <SelectLabel>{{
+                            t('assistant.settings.model.defaultModel')
+                          }}</SelectLabel>
+                          <template
+                            v-for="pw in providersWithModels"
+                            :key="pw.provider.provider_id"
+                          >
                             <SelectLabel class="mt-2">
                               {{ pw.provider.name }}
                             </SelectLabel>

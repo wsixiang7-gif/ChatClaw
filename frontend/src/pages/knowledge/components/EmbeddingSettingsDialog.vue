@@ -69,7 +69,9 @@ const loadGroups = async () => {
         try {
           const detail = await ProvidersService.GetProviderWithModels(p.provider_id)
           return { provider: p, detail }
-        } catch {
+        } catch (error: unknown) {
+          // 单个 provider 加载失败不影响其他，仅记录警告
+          console.warn(`Failed to load provider ${p.provider_id}:`, error)
           return { provider: p, detail: null as ProviderWithModels | null }
         }
       })
@@ -181,7 +183,7 @@ const handleSave = async () => {
           <Select v-model="selectedKey" :disabled="loading || saving">
             <SelectTrigger class="w-full">
               <SelectValue :placeholder="t('knowledge.create.selectPlaceholder')">
-                {{ currentLabel }}
+                <template v-if="currentLabel">{{ currentLabel }}</template>
               </SelectValue>
             </SelectTrigger>
             <SelectContent>

@@ -68,9 +68,7 @@ const handleCreate = () => {
 
 <template>
   <Dialog :open="open" @update:open="handleClose">
-    <DialogContent
-      size="lg"
-    >
+    <DialogContent size="lg">
       <DialogHeader>
         <DialogTitle>{{ t('assistant.create.title') }}</DialogTitle>
       </DialogHeader>

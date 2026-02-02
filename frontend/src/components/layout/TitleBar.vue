@@ -119,9 +119,21 @@ const handleTitleBarDoubleClick = async () => {
               <div v-if="tab.icon" class="size-5 shrink-0 overflow-hidden rounded-md">
                 <img :src="tab.icon" alt="" class="size-full object-cover" />
               </div>
-              <div v-else class="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted">
-                <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" class="size-3">
-                  <path d="M8 2a6 6 0 100 12A6 6 0 008 2z" stroke="currentColor" stroke-width="1.5" />
+              <div
+                v-else
+                class="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="size-3"
+                >
+                  <path
+                    d="M8 2a6 6 0 100 12A6 6 0 008 2z"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                  />
                 </svg>
               </div>
               <!-- 标签页标题 -->
@@ -138,7 +150,12 @@ const handleTitleBarDoubleClick = async () => {
               @keydown.enter.prevent="handleTabClose($event, tab.id)"
               @keydown.space.prevent="handleTabClose($event, tab.id)"
             >
-              <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" class="size-3">
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                class="size-3"
+              >
                 <path
                   d="M4 4l8 8M12 4l-8 8"
                   stroke="currentColor"

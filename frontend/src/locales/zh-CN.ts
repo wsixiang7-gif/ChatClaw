@@ -95,7 +95,8 @@ export default {
     // 模型服务
     modelService: {
       enabled: '已启用',
-      disableBlockedByEmbedding: '该供应商正在被用作全局嵌入模型，请先在“嵌入模型设置”中切换后再关闭',
+      disableBlockedByEmbedding:
+        '该供应商正在被用作全局嵌入模型，请先在“嵌入模型设置”中切换后再关闭',
       apiKey: 'API 密钥',
       apiKeyPlaceholder: '请输入 API 密钥',
       apiKeyRequired: '请先填写 API 密钥',
