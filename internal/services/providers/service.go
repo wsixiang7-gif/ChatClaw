@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -11,8 +12,14 @@ import (
 	"willchat/internal/errs"
 	"willchat/internal/sqlite"
 
+	"github.com/cloudwego/eino-ext/components/model/claude"
+	"github.com/cloudwego/eino-ext/components/model/openai"
+	"github.com/cloudwego/eino/schema"
 	"github.com/uptrace/bun"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"google.golang.org/genai"
+
+	einogemini "github.com/cloudwego/eino-ext/components/model/gemini"
 )
 
 // ProvidersService 供应商服务（暴露给前端调用）
@@ -205,4 +212,244 @@ func (s *ProvidersService) ResetAPIEndpoint(providerID string) (*Provider, error
 		APIEndpoint: &defaultEndpoint,
 	}
 	return s.UpdateProvider(providerID, input)
+}
+
+// CheckAPIKeyInput 检测 API Key 的输入参数
+type CheckAPIKeyInput struct {
+	APIKey      string `json:"api_key"`
+	APIEndpoint string `json:"api_endpoint"`
+	ExtraConfig string `json:"extra_config"`
+}
+
+// CheckAPIKeyResult 检测 API Key 的结果
+type CheckAPIKeyResult struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// CheckAPIKey 检测供应商的 API Key 是否有效
+func (s *ProvidersService) CheckAPIKey(providerID string, input CheckAPIKeyInput) (*CheckAPIKeyResult, error) {
+	providerID = strings.TrimSpace(providerID)
+	if providerID == "" {
+		return nil, errs.New("error.provider_id_required")
+	}
+
+	// 获取供应商信息
+	provider, err := s.GetProvider(providerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取该供应商的第一个 LLM 模型作为测试模型
+	testModelID, err := s.getFirstLLMModel(providerID)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// 根据供应商类型调用不同的 SDK
+	switch provider.Type {
+	case "openai":
+		return s.checkOpenAI(ctx, input, testModelID, false)
+	case "azure":
+		return s.checkAzure(ctx, input, testModelID)
+	case "anthropic":
+		return s.checkClaude(ctx, input, testModelID)
+	case "gemini":
+		return s.checkGemini(ctx, input, testModelID)
+	default:
+		return nil, errs.Newf("error.unsupported_provider_type", map[string]any{"Type": provider.Type})
+	}
+}
+
+// getFirstLLMModel 获取供应商的第一个 LLM 模型
+func (s *ProvidersService) getFirstLLMModel(providerID string) (string, error) {
+	db, err := s.db()
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var m modelModel
+	err = db.NewSelect().
+		Model(&m).
+		Where("provider_id = ?", providerID).
+		Where("type = ?", "llm").
+		OrderExpr("sort_order ASC, id ASC").
+		Limit(1).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", errs.Newf("error.no_llm_model", map[string]any{"ProviderID": providerID})
+		}
+		return "", errs.Wrap("error.model_read_failed", err)
+	}
+	return m.ModelID, nil
+}
+
+// checkOpenAI 使用 OpenAI SDK 检测
+func (s *ProvidersService) checkOpenAI(ctx context.Context, input CheckAPIKeyInput, modelID string, byAzure bool) (*CheckAPIKeyResult, error) {
+	chatModel, err := openai.NewChatModel(ctx, &openai.ChatModelConfig{
+		APIKey:  input.APIKey,
+		Model:   modelID,
+		BaseURL: input.APIEndpoint,
+		ByAzure: byAzure,
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	_, err = chatModel.Generate(ctx, []*schema.Message{
+		{
+			Role:    schema.User,
+			Content: "hi",
+		},
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &CheckAPIKeyResult{
+		Success: true,
+		Message: "",
+	}, nil
+}
+
+// checkAzure 使用 Azure OpenAI SDK 检测
+func (s *ProvidersService) checkAzure(ctx context.Context, input CheckAPIKeyInput, modelID string) (*CheckAPIKeyResult, error) {
+	// 解析 Azure 的额外配置
+	var extraConfig struct {
+		APIVersion string `json:"api_version"`
+	}
+	if input.ExtraConfig != "" {
+		if err := json.Unmarshal([]byte(input.ExtraConfig), &extraConfig); err != nil {
+			return &CheckAPIKeyResult{
+				Success: false,
+				Message: "invalid extra_config: " + err.Error(),
+			}, nil
+		}
+	}
+
+	chatModel, err := openai.NewChatModel(ctx, &openai.ChatModelConfig{
+		APIKey:     input.APIKey,
+		Model:      modelID,
+		BaseURL:    input.APIEndpoint,
+		ByAzure:    true,
+		APIVersion: extraConfig.APIVersion,
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	_, err = chatModel.Generate(ctx, []*schema.Message{
+		{
+			Role:    schema.User,
+			Content: "hi",
+		},
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &CheckAPIKeyResult{
+		Success: true,
+		Message: "",
+	}, nil
+}
+
+// checkClaude 使用 Claude SDK 检测
+func (s *ProvidersService) checkClaude(ctx context.Context, input CheckAPIKeyInput, modelID string) (*CheckAPIKeyResult, error) {
+	var baseURL *string
+	if input.APIEndpoint != "" {
+		baseURL = &input.APIEndpoint
+	}
+
+	chatModel, err := claude.NewChatModel(ctx, &claude.Config{
+		APIKey:    input.APIKey,
+		Model:     modelID,
+		BaseURL:   baseURL,
+		MaxTokens: 100,
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	_, err = chatModel.Generate(ctx, []*schema.Message{
+		{
+			Role:    schema.User,
+			Content: "hi",
+		},
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &CheckAPIKeyResult{
+		Success: true,
+		Message: "",
+	}, nil
+}
+
+// checkGemini 使用 Gemini SDK 检测
+func (s *ProvidersService) checkGemini(ctx context.Context, input CheckAPIKeyInput, modelID string) (*CheckAPIKeyResult, error) {
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{
+		APIKey: input.APIKey,
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	chatModel, err := einogemini.NewChatModel(ctx, &einogemini.Config{
+		Client: client,
+		Model:  modelID,
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	_, err = chatModel.Generate(ctx, []*schema.Message{
+		{
+			Role:    schema.User,
+			Content: "hi",
+		},
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	return &CheckAPIKeyResult{
+		Success: true,
+		Message: "",
+	}, nil
 }

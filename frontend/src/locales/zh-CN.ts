@@ -100,6 +100,8 @@ export default {
       apiVersionPlaceholder: '例如：2024-02-01',
       apiVersionRequired: '请先填写 API 版本',
       check: '检测',
+      checkSuccess: '检测成功',
+      checkFailed: '检测失败',
       reset: '重置',
       llmModels: '大语言模型',
       embeddingModels: '嵌入模型',

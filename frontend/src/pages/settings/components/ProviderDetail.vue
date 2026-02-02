@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { toast } from '@/components/ui/toast'
+import { Eye, EyeOff, LoaderCircle } from 'lucide-vue-next'
 import ModelIcon from '@/assets/icons/model.svg'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -12,12 +13,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { cn } from '@/lib/utils'
 import type {
   Provider,
   ProviderWithModels,
 } from '@/../bindings/willchat/internal/services/providers'
-import { ProvidersService, UpdateProviderInput } from '@/../bindings/willchat/internal/services/providers'
+import { ProvidersService, UpdateProviderInput, CheckAPIKeyInput } from '@/../bindings/willchat/internal/services/providers'
 
 // Azure extra_config 类型
 interface AzureExtraConfig {
@@ -42,6 +42,9 @@ const localApiEndpoint = ref('')
 const localApiVersion = ref('') // Azure 专用
 const isSaving = ref(false)
 const showApiKey = ref(false)
+
+// 检测相关状态
+const isChecking = ref(false)
 
 // 判断是否为 Azure
 const isAzure = computed(() => props.providerWithModels?.provider.provider_id === 'azure')
@@ -202,6 +205,39 @@ const toggleShowApiKey = () => {
   showApiKey.value = !showApiKey.value
 }
 
+// 处理 API Key 检测
+const handleCheck = async () => {
+  if (!props.providerWithModels) return
+
+  isChecking.value = true
+  try {
+    // 构建 extra_config
+    let extraConfig = ''
+    if (isAzure.value && localApiVersion.value) {
+      extraConfig = JSON.stringify({ api_version: localApiVersion.value })
+    }
+
+    const result = await ProvidersService.CheckAPIKey(
+      props.providerWithModels.provider.provider_id,
+      new CheckAPIKeyInput({
+        api_key: localApiKey.value,
+        api_endpoint: localApiEndpoint.value,
+        extra_config: extraConfig,
+      })
+    )
+    if (result?.success) {
+      toast.success(t('settings.modelService.checkSuccess'))
+    } else {
+      toast.error(result?.message || t('settings.modelService.checkFailed'))
+    }
+  } catch (error) {
+    console.error('Failed to check API key:', error)
+    toast.error(String(error))
+  } finally {
+    isChecking.value = false
+  }
+}
+
 // 处理 API Endpoint 保存（失焦时）
 const handleApiEndpointBlur = async () => {
   if (!props.providerWithModels) return
@@ -336,23 +372,34 @@ const defaultAccordionValue = computed(() => {
               {{ t('settings.modelService.apiKey') }}
               <span v-if="!isOllama" class="text-destructive">*</span>
             </label>
-            <div class="relative">
-              <Input
-                v-model="localApiKey"
-                :type="showApiKey ? 'text' : 'password'"
-                :placeholder="t('settings.modelService.apiKeyPlaceholder')"
-                class="pr-10"
-                :disabled="isSaving"
-                @blur="handleApiKeyBlur"
-              />
-              <button
-                type="button"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                @click="toggleShowApiKey"
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <Input
+                  v-model="localApiKey"
+                  :type="showApiKey ? 'text' : 'password'"
+                  :placeholder="t('settings.modelService.apiKeyPlaceholder')"
+                  class="pr-10"
+                  :disabled="isSaving"
+                  @blur="handleApiKeyBlur"
+                />
+                <button
+                  type="button"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  @click="toggleShowApiKey"
+                >
+                  <Eye v-if="!showApiKey" class="size-4" />
+                  <EyeOff v-else class="size-4" />
+                </button>
+              </div>
+              <Button
+                variant="outline"
+                :disabled="isSaving || isChecking || (!isOllama && !localApiKey.trim())"
+                class="min-w-[72px]"
+                @click="handleCheck"
               >
-                <Eye v-if="!showApiKey" class="size-4" />
-                <EyeOff v-else class="size-4" />
-              </button>
+                <LoaderCircle v-if="isChecking" class="size-4 animate-spin" />
+                <span v-else>{{ t('settings.modelService.check') }}</span>
+              </Button>
             </div>
           </div>
 
@@ -373,7 +420,7 @@ const defaultAccordionValue = computed(() => {
                 :disabled="isSaving"
                 @blur="handleApiEndpointBlur"
               />
-              <Button variant="outline" :disabled="isSaving" @click="handleResetEndpoint">
+              <Button variant="outline" class="min-w-[72px]" :disabled="isSaving" @click="handleResetEndpoint">
                 {{ t('settings.modelService.reset') }}
               </Button>
             </div>

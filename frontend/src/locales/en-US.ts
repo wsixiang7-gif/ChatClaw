@@ -108,6 +108,8 @@ export default {
       apiVersionPlaceholder: 'e.g., 2024-02-01',
       apiVersionRequired: 'Please enter API Version first',
       check: 'Check',
+      checkSuccess: 'Check Passed',
+      checkFailed: 'Check Failed',
       reset: 'Reset',
       llmModels: 'LLM Models',
       embeddingModels: 'Embedding Models',
