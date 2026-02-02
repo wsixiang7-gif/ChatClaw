@@ -33,6 +33,7 @@ import {
 
 import type { Library } from '@bindings/willchat/internal/services/library'
 import { LibraryService } from '@bindings/willchat/internal/services/library'
+import { SettingsService } from '@bindings/willchat/internal/services/settings'
 
 type LibraryTab = 'personal' | 'team'
 
@@ -70,7 +71,26 @@ const loadLibraries = async () => {
   }
 }
 
-const handleCreateClick = () => {
+const ensureEmbeddingConfigured = async (): Promise<boolean> => {
+  try {
+    const [p, m] = await Promise.all([
+      SettingsService.Get('embedding_provider_id'),
+      SettingsService.Get('embedding_model_id'),
+    ])
+    return !!(p?.value?.trim() && m?.value?.trim())
+  } catch (error) {
+    console.error('Failed to read embedding settings:', error)
+    return false
+  }
+}
+
+const handleCreateClick = async () => {
+  const ok = await ensureEmbeddingConfigured()
+  if (!ok) {
+    toast.error(t('knowledge.embeddingSettings.required'))
+    embeddingSettingsOpen.value = true
+    return
+  }
   createDialogOpen.value = true
 }
 

@@ -98,6 +98,8 @@ export default {
     // Model service
     modelService: {
       enabled: 'Enabled',
+      disableBlockedByEmbedding:
+        'This provider is used as the global embedding model. Please change it in "Embedding settings" before disabling.',
       apiKey: 'API Key',
       apiKeyPlaceholder: 'Enter API Key',
       apiKeyRequired: 'Please enter API Key first',
@@ -222,6 +224,7 @@ export default {
       warning: 'After changing the embedding model, all knowledge bases must be re-learned.',
       embeddingModel: 'Embedding model',
       embeddingDimension: 'Embedding dimension',
+      required: 'Please select an embedding model in Embedding settings first',
       save: 'Save',
       saved: 'Saved',
       saveFailed: 'Failed to save',

@@ -20,6 +20,7 @@
   "error.provider_list_failed": "获取供应商列表失败",
   "error.provider_read_failed": "读取供应商信息失败",
   "error.provider_update_failed": "更新供应商信息失败",
+  "error.cannot_disable_global_embedding_provider": "该供应商正在被用作全局嵌入模型，请先切换嵌入模型后再关闭",
   "error.model_list_failed": "获取模型列表失败",
   "error.model_read_failed": "读取模型信息失败",
   "error.model_id_required": "缺少模型ID",

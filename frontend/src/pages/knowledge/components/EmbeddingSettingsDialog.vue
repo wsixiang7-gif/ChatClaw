@@ -51,12 +51,21 @@ const currentLabel = computed(() => {
 
 const close = () => emit('update:open', false)
 
+const isSelectionAvailable = computed(() => {
+  const [pid, mid] = selectedKey.value.split('::')
+  if (!pid || !mid) return false
+  const provider = groups.value.find((g) => g.provider.provider_id === pid)
+  return !!provider?.models.some((m) => m.model_id === mid)
+})
+
 const loadGroups = async () => {
   loading.value = true
   try {
     const providers = (await ProvidersService.ListProviders()) || []
+    // 只使用“已启用”的供应商（已启动）
+    const enabledProviders = providers.filter((p) => p.enabled)
     const details = await Promise.all(
-      providers.map(async (p) => {
+      enabledProviders.map(async (p) => {
         try {
           const detail = await ProvidersService.GetProviderWithModels(p.provider_id)
           return { provider: p, detail }
@@ -69,12 +78,17 @@ const loadGroups = async () => {
     const out: Group[] = []
     for (const item of details) {
       const embeddingGroup = item.detail?.model_groups?.find((g) => g.type === 'embedding')
-      const models = embeddingGroup?.models || []
+      // 只取 enabled 的向量模型
+      const models = (embeddingGroup?.models || []).filter((m) => m.enabled)
       if (models.length > 0) {
         out.push({ provider: item.provider, models })
       }
     }
     groups.value = out
+  } catch (error) {
+    console.error('Failed to load embedding model list:', error)
+    toast.error(getErrorMessage(error) || t('knowledge.providersLoadFailed'))
+    groups.value = []
   } finally {
     loading.value = false
   }
@@ -100,7 +114,8 @@ const loadCurrentSettings = async () => {
 }
 
 const ensureDefaultSelection = () => {
-  if (selectedKey.value) return
+  // 已有选择且仍可用 -> 保持
+  if (selectedKey.value && isSelectionAvailable.value) return
   const first = groups.value[0]?.models[0]
   const pid = groups.value[0]?.provider.provider_id
   if (first && pid) {
@@ -120,8 +135,7 @@ watch(
 )
 
 const isValid = computed(() => {
-  const [pid, mid] = selectedKey.value.split('::')
-  if (!pid || !mid) return false
+  if (!isSelectionAvailable.value) return false
   const dim = Number.parseInt(embeddingDimension.value, 10)
   return Number.isFinite(dim) && dim > 0
 })

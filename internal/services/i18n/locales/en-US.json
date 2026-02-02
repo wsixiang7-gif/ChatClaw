@@ -20,6 +20,7 @@
   "error.provider_list_failed": "failed to list providers",
   "error.provider_read_failed": "failed to read provider",
   "error.provider_update_failed": "failed to update provider",
+  "error.cannot_disable_global_embedding_provider": "cannot disable: this provider is used as the global embedding model",
   "error.model_list_failed": "failed to list models",
   "error.model_read_failed": "failed to read model",
   "error.model_id_required": "model ID is required",

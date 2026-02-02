@@ -29,6 +29,7 @@ import { ProvidersService } from '@bindings/willchat/internal/services/providers
 
 import type { Library } from '@bindings/willchat/internal/services/library'
 import { LibraryService, CreateLibraryInput } from '@bindings/willchat/internal/services/library'
+import { SettingsService } from '@bindings/willchat/internal/services/settings'
 
 const props = defineProps<{
   open: boolean
@@ -44,6 +45,8 @@ const { t } = useI18n()
 const advanced = ref(false)
 const isSubmitting = ref(false)
 const loadingProviders = ref(false)
+const loadingEmbedding = ref(false)
+const embeddingReady = ref(false)
 
 const name = ref('')
 
@@ -83,6 +86,26 @@ const currentRerankLabel = computed(() => {
 const isFormValid = computed(() => {
   return name.value.trim() !== ''
 })
+
+const canSubmit = computed(() => {
+  return isFormValid.value && embeddingReady.value && !isSubmitting.value
+})
+
+const loadEmbeddingReady = async () => {
+  loadingEmbedding.value = true
+  try {
+    const [p, m] = await Promise.all([
+      SettingsService.Get('embedding_provider_id'),
+      SettingsService.Get('embedding_model_id'),
+    ])
+    embeddingReady.value = !!(p?.value?.trim() && m?.value?.trim())
+  } catch (error) {
+    console.error('Failed to read embedding settings:', error)
+    embeddingReady.value = false
+  } finally {
+    loadingEmbedding.value = false
+  }
+}
 
 const ensureDefaultRerank = () => {
   if (rerankKey.value) return
@@ -132,12 +155,18 @@ watch(
     if (open) {
       resetForm()
       void loadProviders()
+      void loadEmbeddingReady()
     }
   }
 )
 
 const handleSubmit = async () => {
   if (!isFormValid.value || isSubmitting.value) return
+  if (loadingEmbedding.value) return
+  if (!embeddingReady.value) {
+    toast.error(t('knowledge.embeddingSettings.required'))
+    return
+  }
   isSubmitting.value = true
 
   try {
@@ -312,7 +341,7 @@ const handleSubmit = async () => {
           <Button variant="outline" :disabled="isSubmitting" @click="close">
             {{ t('knowledge.create.cancel') }}
           </Button>
-          <Button :disabled="!isFormValid || isSubmitting" @click="handleSubmit">
+          <Button :disabled="!canSubmit" @click="handleSubmit">
             <LoaderCircle v-if="isSubmitting" class="mr-2 size-4 animate-spin" />
             {{ t('knowledge.create.confirm') }}
           </Button>

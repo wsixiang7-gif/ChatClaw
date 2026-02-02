@@ -77,7 +77,8 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 	if !ok || strings.TrimSpace(embeddingModelID) == "" {
 		return nil, errs.New("error.library_embedding_global_not_set")
 	}
-	// embedding 配置为全局 settings（不落库到 library 表），这里只做存在性校验
+	embeddingProviderID = strings.TrimSpace(embeddingProviderID)
+	embeddingModelID = strings.TrimSpace(embeddingModelID)
 
 	rerankProviderID := strings.TrimSpace(input.RerankProviderID)
 	rerankModelID := strings.TrimSpace(input.RerankModelID)
@@ -108,6 +109,39 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+
+	// embedding 配置为全局 settings（不落库到 library 表），但创建前必须校验：
+	// 1) provider 已启用
+	// 2) embedding 模型存在且已启用（type=embedding）
+	{
+		var providerCount int
+		if err := db.NewSelect().
+			Table("providers").
+			ColumnExpr("COUNT(1)").
+			Where("provider_id = ?", embeddingProviderID).
+			Where("enabled = ?", true).
+			Scan(ctx, &providerCount); err != nil {
+			return nil, errs.Wrap("error.library_create_failed", err)
+		}
+		if providerCount == 0 {
+			return nil, errs.New("error.library_embedding_global_not_set")
+		}
+
+		var modelCount int
+		if err := db.NewSelect().
+			Table("models").
+			ColumnExpr("COUNT(1)").
+			Where("provider_id = ?", embeddingProviderID).
+			Where("model_id = ?", embeddingModelID).
+			Where("type = ?", "embedding").
+			Where("enabled = ?", true).
+			Scan(ctx, &modelCount); err != nil {
+			return nil, errs.Wrap("error.library_create_failed", err)
+		}
+		if modelCount == 0 {
+			return nil, errs.New("error.library_embedding_global_not_set")
+		}
+	}
 
 	// 如果前端未指定重排模型，则选择一个默认值（按 models 表的 sort_order/id）
 	if rerankProviderID == "" || rerankModelID == "" {

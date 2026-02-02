@@ -90,6 +90,7 @@ export default {
     // 模型服务
     modelService: {
       enabled: '已启用',
+      disableBlockedByEmbedding: '该供应商正在被用作全局嵌入模型，请先在“嵌入模型设置”中切换后再关闭',
       apiKey: 'API 密钥',
       apiKeyPlaceholder: '请输入 API 密钥',
       apiKeyRequired: '请先填写 API 密钥',
@@ -222,6 +223,7 @@ export default {
       warning: '修改嵌入模型后，全部知识库需重新学习。',
       embeddingModel: '嵌入模型',
       embeddingDimension: '嵌入维度',
+      required: '请先在嵌入模型设置中选择嵌入模型',
       save: '保存',
       saved: '已保存',
       saveFailed: '保存失败',
