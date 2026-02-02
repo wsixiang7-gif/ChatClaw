@@ -8,6 +8,7 @@ import (
 	"willchat/internal/services/browser"
 	"willchat/internal/services/greet"
 	"willchat/internal/services/i18n"
+	"willchat/internal/services/library"
 	"willchat/internal/services/providers"
 	"willchat/internal/services/settings"
 	"willchat/internal/services/tray"
@@ -53,6 +54,9 @@ func NewApp(opts Options) (*application.App, error) {
 
 	// 注册应用服务
 	app.RegisterService(application.NewService(appservice.NewAppService(app)))
+
+	// 注册知识库服务
+	app.RegisterService(application.NewService(library.NewLibraryService(app)))
 
 	// 创建主窗口
 	mainWindow := windows.NewMainWindow(app)
