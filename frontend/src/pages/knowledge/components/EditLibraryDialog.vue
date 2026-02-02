@@ -180,7 +180,7 @@ const handleSave = async () => {
 
 <template>
   <Dialog :open="open" @update:open="close">
-    <DialogContent class="sm:max-w-[560px]">
+    <DialogContent size="lg">
       <DialogHeader>
         <DialogTitle>{{ t('knowledge.settings.title') }}</DialogTitle>
       </DialogHeader>

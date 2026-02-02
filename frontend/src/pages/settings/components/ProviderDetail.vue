@@ -484,7 +484,7 @@ const confirmDeleteModel = async () => {
     </div>
 
     <!-- 详情内容 -->
-    <div v-else class="mx-auto w-full max-w-[530px]">
+    <div v-else class="mx-auto w-full max-w-settings-card">
       <div
         class="rounded-xl border border-border bg-card p-6 shadow-sm dark:border-white/15 dark:shadow-none dark:ring-1 dark:ring-white/5"
       >

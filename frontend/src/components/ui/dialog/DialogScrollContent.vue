@@ -29,10 +29,10 @@ const delegatedProps = reactiveOmit(props, 'class')
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
 
 const sizeClassMap: Record<DialogSize, string> = {
-  sm: 'w-[425px] max-w-[425px]',
-  md: 'w-[520px] max-w-[520px]',
-  lg: 'w-[640px] max-w-[640px]',
-  xl: 'w-[740px] max-w-[740px]',
+  sm: 'w-dialog-sm max-w-dialog-sm',
+  md: 'w-dialog-md max-w-dialog-md',
+  lg: 'w-dialog-lg max-w-dialog-lg',
+  xl: 'w-dialog-xl max-w-dialog-xl',
   full: 'w-[calc(100%-2rem)] max-w-[calc(100%-2rem)]',
 }
 </script>

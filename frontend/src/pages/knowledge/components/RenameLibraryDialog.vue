@@ -68,7 +68,7 @@ const handleSave = async () => {
 
 <template>
   <Dialog :open="open" @update:open="close">
-    <DialogContent class="sm:max-w-[460px]">
+    <DialogContent size="md">
       <DialogHeader>
         <DialogTitle>{{ t('knowledge.rename.title') }}</DialogTitle>
       </DialogHeader>

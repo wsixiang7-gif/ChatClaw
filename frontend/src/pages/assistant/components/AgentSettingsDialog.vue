@@ -467,12 +467,12 @@ const handleDelete = async () => {
               <div v-else-if="tab === 'prompt'" class="flex flex-col gap-4">
                 <div class="flex flex-col items-center gap-2">
                   <button
-                    class="flex size-[62px] items-center justify-center rounded-[14px] border border-border bg-white text-foreground dark:border-white/15 dark:bg-white/5"
+                    class="flex size-icon-box items-center justify-center rounded-icon-box border border-border bg-white text-foreground dark:border-white/15 dark:bg-white/5"
                     type="button"
                     @click="handlePickIcon"
                   >
-                    <img v-if="icon" :src="icon" class="size-[44px] rounded-md object-contain" />
-                    <LogoIcon v-else class="size-[44px]" />
+                    <img v-if="icon" :src="icon" class="size-icon-lg rounded-md object-contain" />
+                    <LogoIcon v-else class="size-icon-lg" />
                   </button>
                   <div class="text-xs text-muted-foreground">
                     {{ t('assistant.icon.hint') }}

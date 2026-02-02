@@ -94,7 +94,7 @@ onMounted(() => {
 <template>
   <div class="flex h-full w-full overflow-hidden bg-background">
     <!-- 左侧：助手列表 -->
-    <aside class="flex w-[260px] shrink-0 flex-col border-r border-border">
+    <aside class="flex w-sidebar shrink-0 flex-col border-r border-border">
       <div class="flex items-center justify-between gap-2 p-3">
         <div class="inline-flex rounded-md bg-muted p-1">
           <button
@@ -181,7 +181,7 @@ onMounted(() => {
         <div class="text-lg font-semibold text-foreground">
           {{ activeAgent?.name ?? t('assistant.placeholders.noAgentSelected') }}
         </div>
-        <div class="max-w-[520px] px-6 text-center text-sm text-muted-foreground">
+        <div class="max-w-dialog-md px-6 text-center text-sm text-muted-foreground">
           {{ t('assistant.placeholders.chatComingSoon') }}
         </div>
       </div>
