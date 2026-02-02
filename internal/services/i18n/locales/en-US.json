@@ -35,6 +35,7 @@
   "error.model_not_found": "model '{{.ModelID}}' not found",
   "error.model_delete_failed": "failed to delete model",
   "error.cannot_delete_builtin_model": "cannot delete builtin model",
+  "error.cannot_delete_global_embedding_model": "cannot delete: this model is set as the global embedding model",
   "error.no_llm_model": "provider '{{.ProviderID}}' has no available LLM model",
   "error.unsupported_provider_type": "unsupported provider type '{{.Type}}'",
   "error.library_list_failed": "failed to list libraries",

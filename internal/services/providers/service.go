@@ -654,6 +654,40 @@ func (s *ProvidersService) DeleteModel(providerID string, modelID string) error 
 		return errs.New("error.cannot_delete_builtin_model")
 	}
 
+	// 禁止删除正在作为“全局嵌入模型”使用的模型
+	{
+		type row struct {
+			Key   string         `bun:"key"`
+			Value sql.NullString `bun:"value"`
+		}
+		rows := make([]row, 0, 2)
+		if err := db.NewSelect().
+			Table("settings").
+			Column("key", "value").
+			Where("key IN (?)", bun.In([]string{"embedding_provider_id", "embedding_model_id"})).
+			Scan(ctx, &rows); err != nil {
+			return errs.Wrap("error.setting_read_failed", err)
+		}
+
+		var embeddingProviderID, embeddingModelID string
+		for _, r := range rows {
+			if !r.Value.Valid {
+				continue
+			}
+			switch r.Key {
+			case "embedding_provider_id":
+				embeddingProviderID = strings.TrimSpace(r.Value.String)
+			case "embedding_model_id":
+				embeddingModelID = strings.TrimSpace(r.Value.String)
+			}
+		}
+
+		if embeddingProviderID != "" && embeddingModelID != "" &&
+			providerID == embeddingProviderID && modelID == embeddingModelID {
+			return errs.New("error.cannot_delete_global_embedding_model")
+		}
+	}
+
 	_, err = db.NewDelete().
 		Model((*modelModel)(nil)).
 		Where("provider_id = ?", providerID).
