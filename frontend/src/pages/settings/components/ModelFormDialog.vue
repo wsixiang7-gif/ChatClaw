@@ -119,16 +119,38 @@ defineExpose({ resetSaving })
       </DialogHeader>
 
       <div class="flex flex-col gap-4 py-4">
+        <!-- 模型类型 -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-foreground">
+            {{ t('settings.modelService.modelType') }}
+            <span v-if="!isEdit" class="text-destructive">*</span>
+          </label>
+          <Select v-model="formType" :disabled="isSaving || isEdit">
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="llm">
+                {{ t('settings.modelService.llmModels') }}
+              </SelectItem>
+              <SelectItem value="embedding">
+                {{ t('settings.modelService.embeddingModels') }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <!-- 模型 ID -->
         <div class="flex flex-col gap-1.5">
           <label class="text-sm font-medium text-foreground">
             {{ t('settings.modelService.modelId') }}
-            <span class="text-destructive">*</span>
+            <span v-if="!isEdit" class="text-destructive">*</span>
           </label>
           <Input
             v-model="formModelId"
             :placeholder="t('settings.modelService.modelIdPlaceholder')"
-            :disabled="isSaving"
+            :disabled="isSaving || isEdit"
+            maxlength="30"
           />
         </div>
 
@@ -142,28 +164,8 @@ defineExpose({ resetSaving })
             v-model="formName"
             :placeholder="t('settings.modelService.modelNamePlaceholder')"
             :disabled="isSaving"
+            maxlength="30"
           />
-        </div>
-
-        <!-- 模型类型 -->
-        <div class="flex flex-col gap-1.5">
-          <label class="text-sm font-medium text-foreground">
-            {{ t('settings.modelService.modelType') }}
-            <span class="text-destructive">*</span>
-          </label>
-          <Select v-model="formType" :disabled="isSaving">
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="llm">
-                {{ t('settings.modelService.llmModels') }}
-              </SelectItem>
-              <SelectItem value="embedding">
-                {{ t('settings.modelService.embeddingModels') }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 

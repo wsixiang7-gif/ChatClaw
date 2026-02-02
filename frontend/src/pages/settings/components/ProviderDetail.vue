@@ -48,6 +48,34 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
+// 提取 Wails 错误消息
+const getErrorMessage = (error: unknown): string => {
+  let msg = ''
+  
+  // 先获取 message 字段
+  if (error instanceof Error) {
+    msg = error.message
+  } else if (typeof error === 'string') {
+    msg = error
+  } else if (typeof error === 'object' && error !== null && 'message' in error) {
+    msg = String((error as { message: unknown }).message)
+  } else {
+    msg = String(error)
+  }
+  
+  // 如果 message 是 JSON 字符串，尝试解析并提取内部的 message
+  if (msg.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(msg)
+      if (parsed.message) return parsed.message
+    } catch {
+      // 解析失败，返回原始消息
+    }
+  }
+  
+  return msg
+}
+
 // 本地表单状态
 const localEnabled = ref(false)
 const localApiKey = ref('')
@@ -250,7 +278,7 @@ const handleCheck = async () => {
     }
   } catch (error) {
     console.error('Failed to check API key:', error)
-    toast.error(String(error))
+    toast.error(getErrorMessage(error))
   } finally {
     isChecking.value = false
   }
@@ -359,14 +387,12 @@ const handleSaveModel = async (data: { modelId: string; name: string; type: stri
 
   try {
     if (editingModel.value) {
-      // 编辑模式
+      // 编辑模式（只允许修改 name）
       await ProvidersService.UpdateModel(
         props.providerWithModels.provider.provider_id,
         editingModel.value.model_id,
         new UpdateModelInput({
-          model_id: data.modelId,
           name: data.name,
-          type: data.type,
         })
       )
       toast.success(t('settings.modelService.modelUpdated'))
@@ -388,7 +414,7 @@ const handleSaveModel = async (data: { modelId: string; name: string; type: stri
     emit('refresh')
   } catch (error) {
     console.error('Failed to save model:', error)
-    toast.error(String(error))
+    toast.error(getErrorMessage(error))
   } finally {
     modelFormDialogRef.value?.resetSaving()
   }
@@ -421,7 +447,7 @@ const confirmDeleteModel = async () => {
     emit('refresh')
   } catch (error) {
     console.error('Failed to delete model:', error)
-    toast.error(String(error))
+    toast.error(getErrorMessage(error))
   } finally {
     isDeleting.value = false
   }
@@ -585,7 +611,7 @@ const confirmDeleteModel = async () => {
                         class="group flex items-center gap-2 px-4 py-2 hover:bg-accent/50"
                       >
                         <ModelIcon class="size-5 shrink-0 text-muted-foreground" />
-                        <span class="flex-1 text-sm text-foreground">{{ model.name }}</span>
+                        <span class="min-w-0 flex-1 truncate text-sm text-foreground">{{ model.name }}</span>
                         <!-- 编辑和删除按钮 -->
                         <div class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                           <button

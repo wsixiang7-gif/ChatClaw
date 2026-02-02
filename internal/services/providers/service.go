@@ -440,10 +440,16 @@ func (s *ProvidersService) CreateModel(providerID string, input CreateModelInput
 	if input.ModelID == "" {
 		return nil, errs.New("error.model_id_required")
 	}
+	if len([]rune(input.ModelID)) > 30 {
+		return nil, errs.New("error.model_id_too_long")
+	}
 
 	input.Name = strings.TrimSpace(input.Name)
 	if input.Name == "" {
 		return nil, errs.New("error.model_name_required")
+	}
+	if len([]rune(input.Name)) > 30 {
+		return nil, errs.New("error.model_name_too_long")
 	}
 
 	input.Type = strings.TrimSpace(input.Type)
@@ -537,26 +543,18 @@ func (s *ProvidersService) UpdateModel(providerID string, modelID string, input 
 		Where("model_id = ?", modelID).
 		Set("updated_at = ?", time.Now().UTC())
 
-	if input.ModelID != nil {
-		newModelID := strings.TrimSpace(*input.ModelID)
-		if newModelID == "" {
-			return nil, errs.New("error.model_id_required")
-		}
-		q = q.Set("model_id = ?", newModelID)
-	}
+	// 注意：不允许修改 model_id 和 type，因为它们是模型的基本属性
+	// input.ModelID 和 input.Type 字段被忽略
+
 	if input.Name != nil {
 		newName := strings.TrimSpace(*input.Name)
 		if newName == "" {
 			return nil, errs.New("error.model_name_required")
 		}
-		q = q.Set("name = ?", newName)
-	}
-	if input.Type != nil {
-		newType := strings.TrimSpace(*input.Type)
-		if newType != "llm" && newType != "embedding" {
-			return nil, errs.New("error.model_type_invalid")
+		if len([]rune(newName)) > 30 {
+			return nil, errs.New("error.model_name_too_long")
 		}
-		q = q.Set("type = ?", newType)
+		q = q.Set("name = ?", newName)
 	}
 	if input.Enabled != nil {
 		q = q.Set("enabled = ?", *input.Enabled)
@@ -572,13 +570,7 @@ func (s *ProvidersService) UpdateModel(providerID string, modelID string, input 
 		return nil, errs.Newf("error.model_not_found", map[string]any{"ModelID": modelID})
 	}
 
-	// 获取更新后的模型（如果 model_id 被修改了，需要用新的 ID）
-	newModelID := modelID
-	if input.ModelID != nil {
-		newModelID = strings.TrimSpace(*input.ModelID)
-	}
-
-	return s.GetModel(providerID, newModelID)
+	return s.GetModel(providerID, modelID)
 }
 
 // GetModel 获取单个模型
