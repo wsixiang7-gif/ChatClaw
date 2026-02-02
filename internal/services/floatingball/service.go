@@ -342,7 +342,7 @@ func (s *FloatingBallService) ensureLocked() *application.WebviewWindow {
 		Hidden:        true,
 		URL:           "/floatingball.html",
 
-		BackgroundType: application.BackgroundTypeTransparent,
+		BackgroundType: floatingBallBackgroundType(),
 		// 鼠标事件必须保留，否则无法交互
 		IgnoreMouseEvents: false,
 
