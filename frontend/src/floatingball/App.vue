@@ -22,6 +22,11 @@ const innerWidth = ref(window.innerWidth)
 const collapsed = computed(() => innerWidth.value <= 36)
 const appActive = ref(true)
 
+const activePointerId = ref<number | null>(null)
+const capturedPointerId = ref<number | null>(null)
+const pointerStartX = ref(0)
+const pointerStartY = ref(0)
+
 const onEnter = () => {
   hovered.value = true
   void FloatingBallService.Hover(true)
@@ -33,17 +38,29 @@ const onLeave = () => {
 }
 
 const onPointerDown = (e: PointerEvent) => {
-  // 捕获指针：即使鼠标松开在窗口外，也能收到 pointerup，从而结束拖拽并触发贴边缩小
+  // 仅在“真实拖拽”时才 setPointerCapture（Windows 上过早 capture 可能导致鼠标被窗口“抓住”）
   logDrag('pointerdown', { id: e.pointerId, type: e.pointerType, x: e.clientX, y: e.clientY })
+  activePointerId.value = e.pointerId
+  capturedPointerId.value = null
+  pointerStartX.value = e.clientX
+  pointerStartY.value = e.clientY
+  void FloatingBallService.SetDragging(true)
+}
+
+const onPointerMove = (e: PointerEvent) => {
+  if (activePointerId.value == null || e.pointerId !== activePointerId.value) return
+  if (capturedPointerId.value != null) return
+  const dx = Math.abs(e.clientX - pointerStartX.value)
+  const dy = Math.abs(e.clientY - pointerStartY.value)
+  if (dx <= 2 && dy <= 2) return
   try {
     ;(e.currentTarget as HTMLElement | null)?.setPointerCapture?.(e.pointerId)
     const captured = (e.currentTarget as HTMLElement | null)?.hasPointerCapture?.(e.pointerId)
     logDrag('setPointerCapture', { id: e.pointerId, captured })
+    if (captured) capturedPointerId.value = e.pointerId
   } catch {
-    // ignore
     logDrag('setPointerCapture:failed', { id: e.pointerId })
   }
-  void FloatingBallService.SetDragging(true)
 }
 const onPointerUp = (e: PointerEvent) => {
   logDrag('pointerup', { id: e.pointerId, type: e.pointerType, x: e.clientX, y: e.clientY })
@@ -52,10 +69,14 @@ const onPointerUp = (e: PointerEvent) => {
   } catch {
     // ignore
   }
+  activePointerId.value = null
+  capturedPointerId.value = null
   void FloatingBallService.SetDragging(false)
 }
 const onPointerCancel = () => {
   logDrag('pointercancel', {})
+  activePointerId.value = null
+  capturedPointerId.value = null
   void FloatingBallService.SetDragging(false)
 }
 
@@ -75,6 +96,12 @@ const setActive = (active: boolean) => {
   if (appActive.value === active) return
   appActive.value = active
   void FloatingBallService.SetAppActive(active)
+  // 失焦时确保结束拖拽（避免 Windows 捕获导致无法点击其它应用）
+  if (!active) {
+    activePointerId.value = null
+    capturedPointerId.value = null
+    void FloatingBallService.SetDragging(false)
+  }
   // 如果应用重新激活且鼠标仍在悬浮球上，触发展开
   if (active && hovered.value) {
     void FloatingBallService.Hover(true)
@@ -112,12 +139,13 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-screen w-screen bg-transparent select-none">
+  <div class="h-full w-full bg-transparent select-none overflow-hidden">
     <div
       class="relative h-full w-full"
       @mouseenter="onEnter"
       @mouseleave="onLeave"
       @pointerdown.capture="onPointerDown"
+      @pointermove.capture="onPointerMove"
       @pointerup.capture="onPointerUp"
       @pointercancel.capture="onPointerCancel"
       @dblclick.stop="onDblClick"
@@ -145,6 +173,7 @@ onUnmounted(() => {
         <img
           :src="logoUrl"
           :class="collapsed ? 'h-6 w-6' : 'h-11 w-11'"
+          class="block"
           alt="WillChat"
           draggable="false"
         />
