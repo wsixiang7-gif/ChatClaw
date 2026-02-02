@@ -183,7 +183,7 @@ const handleSave = async () => {
             required
           />
           <Select v-model="selectedKey" :disabled="loading || saving">
-            <SelectTrigger>
+            <SelectTrigger class="w-full">
               <SelectValue :placeholder="t('knowledge.create.selectPlaceholder')">
                 {{ currentLabel }}
               </SelectValue>

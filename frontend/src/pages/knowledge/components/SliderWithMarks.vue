@@ -44,14 +44,14 @@ const positions = computed(() =>
       @update:model-value="emit('update:modelValue', $event as number[])"
     />
 
-    <div class="relative mt-2 h-5 select-none text-xs text-muted-foreground">
+    <div class="relative mt-2 h-5 select-none text-xs text-foreground">
       <div
         v-for="m in positions"
         :key="`${m.value}-${m.label}`"
         class="absolute top-0 -translate-x-1/2 whitespace-nowrap"
         :style="{ left: `${m.pct}%` }"
       >
-        <span :class="m.emphasize && 'text-foreground font-medium'">{{ m.label }}</span>
+        <span :class="m.emphasize && 'font-medium'">{{ m.label }}</span>
       </div>
     </div>
   </div>

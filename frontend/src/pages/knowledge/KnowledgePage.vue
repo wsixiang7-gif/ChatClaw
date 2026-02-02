@@ -248,11 +248,11 @@ onMounted(() => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" class="w-40">
                 <DropdownMenuItem class="gap-2" @select="handleOpenRename(lib)">
-                  <IconRename class="size-4" />
+                  <IconRename class="size-4 text-muted-foreground" />
                   {{ t('knowledge.item.rename') }}
                 </DropdownMenuItem>
                 <DropdownMenuItem class="gap-2" @select="handleOpenEdit(lib)">
-                  <IconLibSettings class="size-4" />
+                  <IconLibSettings class="size-4 text-muted-foreground" />
                   {{ t('knowledge.item.settings') }}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
