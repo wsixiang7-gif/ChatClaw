@@ -55,8 +55,14 @@
   "error.agent_prompt_too_long": "prompt cannot exceed 1000 characters",
   "error.agent_default_llm_provider_required": "default LLM provider is required",
   "error.agent_default_llm_model_required": "default LLM model ID is required",
+  "error.agent_default_llm_incomplete": "default model info is incomplete",
   "error.agent_llm_model_check_failed": "failed to check default LLM model",
   "error.agent_llm_model_not_found": "default LLM model '{{.ProviderID}}/{{.ModelID}}' not found",
   "error.agent_pick_default_llm_failed": "failed to pick default LLM model",
-  "error.agent_no_llm_model_available": "no available LLM model"
+  "error.agent_no_llm_model_available": "no available LLM model",
+  "error.agent_icon_path_required": "icon file path is required",
+  "error.agent_icon_read_failed": "failed to read icon file",
+  "error.agent_icon_invalid": "invalid icon file",
+  "error.agent_icon_too_large": "icon file is too large (max 100KB)",
+  "error.agent_icon_type_not_allowed": "icon file type is not allowed"
 }

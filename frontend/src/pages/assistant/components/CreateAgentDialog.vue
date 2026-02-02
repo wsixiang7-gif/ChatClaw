@@ -3,6 +3,9 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import LogoIcon from '@/assets/images/logo.svg'
+import { Dialogs } from '@wailsio/runtime'
+import { AgentsService } from '@bindings/willchat/internal/services/agents'
 import {
   Dialog,
   DialogContent,
@@ -18,13 +21,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  create: [data: { name: string; prompt: string }]
+  create: [data: { name: string; prompt: string; icon: string }]
 }>()
 
 const { t } = useI18n()
 
 const name = ref('')
 const prompt = ref('')
+const icon = ref<string>('') // data URL
 
 const isValid = computed(() => name.value.trim() !== '' && prompt.value.trim() !== '')
 
@@ -34,30 +38,68 @@ watch(
     if (!open) return
     name.value = ''
     prompt.value = ''
+    icon.value = ''
   }
 )
 
 const handleClose = () => emit('update:open', false)
+const handlePickIcon = async () => {
+  if (props.loading) return
+  const path = await Dialogs.OpenFile({
+    CanChooseFiles: true,
+    CanChooseDirectories: false,
+    AllowsMultipleSelection: false,
+    Title: t('assistant.icon.pickTitle'),
+    Filters: [
+      {
+        DisplayName: t('assistant.icon.filterImages'),
+        Pattern: '*.png;*.jpg;*.jpeg;*.gif;*.webp;*.svg',
+      },
+    ],
+  })
+  if (!path) return
+  icon.value = await AgentsService.ReadIconFile(path)
+}
 const handleCreate = () => {
   if (!isValid.value || props.loading) return
-  emit('create', { name: name.value.trim(), prompt: prompt.value.trim() })
+  emit('create', { name: name.value.trim(), prompt: prompt.value.trim(), icon: icon.value })
 }
 </script>
 
 <template>
   <Dialog :open="open" @update:open="handleClose">
-    <DialogContent class="sm:max-w-[560px]">
+    <DialogContent
+      size="lg"
+    >
       <DialogHeader>
         <DialogTitle>{{ t('assistant.create.title') }}</DialogTitle>
       </DialogHeader>
 
       <div class="flex flex-col gap-4 py-4">
+        <div class="flex flex-col items-center gap-2">
+          <button
+            class="flex size-[62px] items-center justify-center rounded-[14px] border border-border bg-white text-foreground dark:border-white/15 dark:bg-white/5"
+            type="button"
+            @click="handlePickIcon"
+          >
+            <img v-if="icon" :src="icon" class="size-[44px] rounded-md object-cover" />
+            <LogoIcon v-else class="size-[44px]" />
+          </button>
+          <div class="text-xs text-muted-foreground">
+            {{ t('assistant.icon.hint') }}
+          </div>
+        </div>
+
         <div class="flex flex-col gap-1.5">
           <label class="text-sm font-medium text-foreground">
             {{ t('assistant.fields.name') }}
             <span class="text-destructive">*</span>
           </label>
-          <Input v-model="name" :placeholder="t('assistant.fields.namePlaceholder')" maxlength="100" />
+          <Input
+            v-model="name"
+            :placeholder="t('assistant.fields.namePlaceholder')"
+            maxlength="100"
+          />
         </div>
 
         <div class="flex flex-col gap-1.5">
@@ -69,7 +111,7 @@ const handleCreate = () => {
             v-model="prompt"
             :placeholder="t('assistant.fields.promptPlaceholder')"
             maxlength="1000"
-            class="min-h-[160px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="min-h-[110px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
       </div>
@@ -85,4 +127,3 @@ const handleCreate = () => {
     </DialogContent>
   </Dialog>
 </template>
-

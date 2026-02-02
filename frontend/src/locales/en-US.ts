@@ -133,12 +133,18 @@ export default {
       modelUpdated: 'Model updated successfully',
       modelDeleted: 'Model deleted successfully',
       deleteConfirmTitle: 'Confirm Delete',
-      deleteConfirmMessage: 'Are you sure you want to delete the model "{name}"? This action cannot be undone.',
+      deleteConfirmMessage:
+        'Are you sure you want to delete the model "{name}"? This action cannot be undone.',
       confirmDelete: 'Delete',
       deleting: 'Deleting...',
     },
   },
   assistant: {
+    icon: {
+      hint: 'Click to replace. Recommended 100×100px, <= 100KB',
+      pickTitle: 'Select Icon File',
+      filterImages: 'Images',
+    },
     modes: {
       personal: 'Personal',
       team: 'Team',
@@ -168,6 +174,7 @@ export default {
       createFailed: 'Failed to create agent',
       updateFailed: 'Failed to update agent',
       deleteFailed: 'Failed to delete agent',
+      defaultModelIncomplete: 'Default model info is incomplete',
     },
     toasts: {
       created: 'Agent created',
@@ -184,12 +191,16 @@ export default {
       model: {
         defaultModel: 'Default Model',
         defaultModelHint: 'Current default model for this agent',
+        noDefaultModel: 'Not set',
+        clear: 'Clear',
+        change: 'Change',
         temperature: 'Temperature',
         temperatureHint: 'Controls randomness',
         topP: 'Top-P',
         topPHint: 'Controls sampling range',
         contextCount: 'Context Count',
         maxTokens: 'Max Tokens',
+        unlimited: 'Unlimited',
       },
       delete: {
         title: 'Delete Agent',

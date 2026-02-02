@@ -55,8 +55,14 @@
   "error.agent_prompt_too_long": "提示词不能超过1000个字符",
   "error.agent_default_llm_provider_required": "缺少默认模型供应商",
   "error.agent_default_llm_model_required": "缺少默认模型ID",
+  "error.agent_default_llm_incomplete": "默认模型信息不完整",
   "error.agent_llm_model_check_failed": "检查默认模型失败",
   "error.agent_llm_model_not_found": "未找到默认模型「{{.ProviderID}}/{{.ModelID}}」",
   "error.agent_pick_default_llm_failed": "选择默认模型失败",
-  "error.agent_no_llm_model_available": "没有可用的大语言模型"
+  "error.agent_no_llm_model_available": "没有可用的大语言模型",
+  "error.agent_icon_path_required": "缺少图标文件路径",
+  "error.agent_icon_read_failed": "读取图标文件失败",
+  "error.agent_icon_invalid": "图标文件不合法",
+  "error.agent_icon_too_large": "图标文件过大（需不超过100KB）",
+  "error.agent_icon_type_not_allowed": "不支持的图标文件格式"
 }

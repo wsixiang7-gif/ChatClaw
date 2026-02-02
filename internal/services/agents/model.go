@@ -29,6 +29,7 @@ type Agent struct {
 type CreateAgentInput struct {
 	Name   string `json:"name"`
 	Prompt string `json:"prompt"`
+	Icon   string `json:"icon"`
 }
 
 type UpdateAgentInput struct {

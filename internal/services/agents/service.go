@@ -3,7 +3,11 @@ package agents
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"errors"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -101,15 +105,12 @@ func (s *AgentsService) CreateAgent(input CreateAgentInput) (*Agent, error) {
 		return nil, errs.New("error.agent_prompt_too_long")
 	}
 
-	db, err := s.db()
-	if err != nil {
-		return nil, err
+	icon := strings.TrimSpace(input.Icon)
+	if icon != "" && len(icon) > 250_000 {
+		return nil, errs.New("error.agent_icon_too_large")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	defaultProviderID, defaultModelID, err := pickDefaultLLM(ctx, db)
+	db, err := s.db()
 	if err != nil {
 		return nil, err
 	}
@@ -117,15 +118,19 @@ func (s *AgentsService) CreateAgent(input CreateAgentInput) (*Agent, error) {
 	m := &agentModel{
 		Name:   name,
 		Prompt: prompt,
-		Icon:   "",
+		Icon:   icon,
 
-		DefaultLLMProviderID: defaultProviderID,
-		DefaultLLMModelID:    defaultModelID,
+		// 允许为空：用户可在「模型设置」里选择
+		DefaultLLMProviderID: "",
+		DefaultLLMModelID:    "",
 		LLMTemperature:       0.5,
 		LLMTopP:              1.0,
 		ContextCount:         50,
 		LLMMaxTokens:         1000,
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
 	if _, err := db.NewInsert().Model(m).Exec(ctx); err != nil {
 		return nil, errs.Wrap("error.agent_create_failed", err)
@@ -133,6 +138,44 @@ func (s *AgentsService) CreateAgent(input CreateAgentInput) (*Agent, error) {
 
 	dto := m.toDTO()
 	return &dto, nil
+}
+
+// ReadIconFile 将本地图片文件读取为 data URL（供前端预览 + 写入 DB）。
+// 约束：最大 100KB，仅允许常见图片格式（png/jpg/jpeg/gif/webp/svg）。
+func (s *AgentsService) ReadIconFile(path string) (string, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", errs.New("error.agent_icon_path_required")
+	}
+
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", errs.Wrap("error.agent_icon_read_failed", err)
+	}
+	if len(b) == 0 {
+		return "", errs.New("error.agent_icon_invalid")
+	}
+	if len(b) > 100*1024 {
+		return "", errs.New("error.agent_icon_too_large")
+	}
+
+	ext := strings.ToLower(filepath.Ext(path))
+	mime := http.DetectContentType(b)
+
+	// svg: DetectContentType 可能返回 text/xml；这里基于扩展名兜底
+	if ext == ".svg" {
+		mime = "image/svg+xml"
+	}
+
+	switch mime {
+	case "image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml":
+		// ok
+	default:
+		return "", errs.New("error.agent_icon_type_not_allowed")
+	}
+
+	encoded := base64.StdEncoding.EncodeToString(b)
+	return "data:" + mime + ";base64," + encoded, nil
 }
 
 func (s *AgentsService) UpdateAgent(id int64, input UpdateAgentInput) (*Agent, error) {
@@ -159,19 +202,22 @@ func (s *AgentsService) UpdateAgent(id int64, input UpdateAgentInput) (*Agent, e
 
 	if input.DefaultLLMProviderID != nil {
 		newProviderID = strings.TrimSpace(*input.DefaultLLMProviderID)
-		if newProviderID == "" {
-			return nil, errs.New("error.agent_default_llm_provider_required")
-		}
 	}
 	if input.DefaultLLMModelID != nil {
 		newModelID = strings.TrimSpace(*input.DefaultLLMModelID)
-		if newModelID == "" {
-			return nil, errs.New("error.agent_default_llm_model_required")
-		}
 	}
 	if (input.DefaultLLMProviderID != nil) || (input.DefaultLLMModelID != nil) {
-		if err := ensureLLMModelExists(ctx, db, newProviderID, newModelID); err != nil {
-			return nil, err
+		// 允许清空（删除默认模型）：
+		// - provider+model 同时为空：清空
+		// - 任意一个为空：输入不完整
+		if newProviderID == "" && newModelID == "" {
+			// ok - clear
+		} else if newProviderID == "" || newModelID == "" {
+			return nil, errs.New("error.agent_default_llm_incomplete")
+		} else {
+			if err := ensureLLMModelExists(ctx, db, newProviderID, newModelID); err != nil {
+				return nil, err
+			}
 		}
 	}
 

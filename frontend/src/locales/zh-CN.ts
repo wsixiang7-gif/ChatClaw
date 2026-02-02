@@ -139,6 +139,11 @@ export default {
     },
   },
   assistant: {
+    icon: {
+      hint: '点击替换，建议尺寸为100*100px，大小不超过100kb',
+      pickTitle: '选择图标文件',
+      filterImages: '图片文件',
+    },
     modes: {
       personal: '个人',
       team: '团队',
@@ -168,6 +173,7 @@ export default {
       createFailed: '创建助手失败',
       updateFailed: '更新助手失败',
       deleteFailed: '删除助手失败',
+      defaultModelIncomplete: '默认模型信息不完整',
     },
     toasts: {
       created: '助手创建成功',
@@ -184,12 +190,16 @@ export default {
       model: {
         defaultModel: '默认模型',
         defaultModelHint: '当前助手默认模型',
+        noDefaultModel: '未设置',
+        clear: '清空',
+        change: '修改',
         temperature: '模型温度',
         temperatureHint: '控制回复的随机性',
         topP: 'Top-P',
         topPHint: '控制采样范围',
         contextCount: '上下文数',
         maxTokens: '最大 Token 数',
+        unlimited: '不限',
       },
       delete: {
         title: '删除助手',

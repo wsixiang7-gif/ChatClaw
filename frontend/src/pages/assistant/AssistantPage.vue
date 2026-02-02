@@ -5,6 +5,7 @@ import { Plus, Settings2 } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
+import LogoIcon from '@/assets/images/logo.svg'
 import CreateAgentDialog from './components/CreateAgentDialog.vue'
 import AgentSettingsDialog from './components/AgentSettingsDialog.vue'
 import { AgentsService, type Agent } from '@bindings/willchat/internal/services/agents'
@@ -43,10 +44,14 @@ const loadAgents = async () => {
   }
 }
 
-const handleCreate = async (data: { name: string; prompt: string }) => {
+const handleCreate = async (data: { name: string; prompt: string; icon: string }) => {
   loading.value = true
   try {
-    const created = await AgentsService.CreateAgent({ name: data.name, prompt: data.prompt })
+    const created = await AgentsService.CreateAgent({
+      name: data.name,
+      prompt: data.prompt,
+      icon: data.icon,
+    })
     if (!created) {
       throw new Error(t('assistant.errors.createFailed'))
     }
@@ -142,9 +147,10 @@ onMounted(() => {
           @click="activeAgentId = a.id"
         >
           <div
-            class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-sm text-foreground"
+            class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
           >
-            {{ (a.name || '?').slice(0, 1) }}
+            <img v-if="a.icon" :src="a.icon" class="size-8 rounded-md object-cover" />
+            <LogoIcon v-else class="size-5 opacity-90" />
           </div>
 
           <div class="min-w-0 flex-1">
@@ -188,4 +194,3 @@ onMounted(() => {
     />
   </div>
 </template>
-

@@ -19,8 +19,8 @@ create table if not exists agents (
     prompt varchar(1000) not null,
 	icon text not null default '',
 	
-	default_llm_provider_id varchar(64) not null default 'zhipu',
-	default_llm_model_id varchar(128) not null default 'glm-4.5-flash',
+	default_llm_provider_id varchar(64) not null,
+	default_llm_model_id varchar(128) not null,
 
 	llm_temperature float not null default 0.5,
 	llm_top_p float not null default 1.0,

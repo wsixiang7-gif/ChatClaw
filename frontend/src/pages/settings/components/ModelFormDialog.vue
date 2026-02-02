@@ -45,9 +45,7 @@ const isEdit = computed(() => !!props.model)
 
 // 对话框标题
 const dialogTitle = computed(() =>
-  isEdit.value
-    ? t('settings.modelService.editModel')
-    : t('settings.modelService.addModel')
+  isEdit.value ? t('settings.modelService.editModel') : t('settings.modelService.addModel')
 )
 
 // 表单验证
@@ -110,7 +108,7 @@ defineExpose({ resetSaving })
 
 <template>
   <Dialog :open="open" @update:open="handleClose">
-    <DialogContent class="sm:max-w-[425px]">
+    <DialogContent size="sm">
       <DialogHeader>
         <DialogTitle>{{ dialogTitle }}</DialogTitle>
         <DialogDescription>

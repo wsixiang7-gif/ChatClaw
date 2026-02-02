@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Trash2, X } from 'lucide-vue-next'
+import { Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import LogoIcon from '@/assets/images/logo.svg'
+import { Dialogs } from '@wailsio/runtime'
+import { ProviderIcon } from '@/components/ui/provider-icon'
+import SliderWithTicks from './SliderWithTicks.vue'
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+} from '@/components/ui/select'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +31,10 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
 import { AgentsService, type Agent } from '@bindings/willchat/internal/services/agents'
+import {
+  ProvidersService,
+  type ProviderWithModels,
+} from '@bindings/willchat/internal/services/providers'
 
 type TabKey = 'model' | 'prompt' | 'delete'
 
@@ -48,20 +58,32 @@ const deleteConfirmOpen = ref(false)
 // prompt tab fields
 const name = ref('')
 const prompt = ref('')
+const icon = ref<string>('') // data URL
+const iconChanged = ref(false)
 
 // model tab fields
 const temperatureEnabled = ref(true)
 const topPEnabled = ref(true)
+const maxTokensEnabled = ref(false)
 const temperature = ref(0.5)
 const topP = ref(1.0)
 const contextCount = ref(50)
 const maxTokens = ref(1000)
+
+const providersWithModels = ref<ProviderWithModels[]>([])
+const modelProviderId = ref('')
+const modelId = ref('')
+const modelName = ref('')
+const modelChanged = ref(false)
+const modelKey = ref('')
 
 watch(
   () => props.open,
   (open) => {
     if (!open) return
     tab.value = 'model'
+    // lazy load models for selection
+    void loadModels()
   }
 )
 
@@ -71,33 +93,130 @@ watch(
     if (!agent) return
     name.value = agent.name ?? ''
     prompt.value = agent.prompt ?? ''
+    icon.value = agent.icon ?? ''
+    iconChanged.value = false
 
     temperature.value = agent.llm_temperature ?? 0.5
     topP.value = agent.llm_top_p ?? 1.0
     contextCount.value = agent.context_count ?? 50
     maxTokens.value = agent.llm_max_tokens ?? 1000
+
+    modelProviderId.value = agent.default_llm_provider_id ?? ''
+    modelId.value = agent.default_llm_model_id ?? ''
+    modelName.value = ''
+    modelChanged.value = false
+    modelKey.value =
+      modelProviderId.value && modelId.value ? `${modelProviderId.value}::${modelId.value}` : ''
   },
   { immediate: true }
 )
+
+const hasDefaultModel = computed(() => modelProviderId.value !== '' && modelId.value !== '')
+
+const displayContextCount = computed(() => {
+  return contextCount.value >= 200
+    ? t('assistant.settings.model.unlimited')
+    : String(contextCount.value)
+})
+
+const loadModels = async () => {
+  try {
+    const providers = await ProvidersService.ListProviders()
+    const enabled = providers.filter((p) => p.enabled)
+    const results: ProviderWithModels[] = []
+    for (const p of enabled) {
+      const withModels = await ProvidersService.GetProviderWithModels(p.provider_id)
+      if (withModels) results.push(withModels)
+    }
+    providersWithModels.value = results
+
+    // resolve current model name
+    if (modelProviderId.value && modelId.value) {
+      for (const pw of results) {
+        if (pw.provider.provider_id !== modelProviderId.value) continue
+        for (const group of pw.model_groups) {
+          if (group.type !== 'llm') continue
+          const m = group.models.find((x) => x.model_id === modelId.value)
+          if (m) modelName.value = m.name
+        }
+      }
+    }
+  } catch {
+    // ignore in modal
+  }
+}
+
+const onModelKeyChange = (val: any) => {
+  if (typeof val !== 'string') return
+  modelKey.value = val
+  if (!val) {
+    clearDefaultModel()
+    return
+  }
+  const [p, m] = val.split('::')
+  modelProviderId.value = p ?? ''
+  modelId.value = m ?? ''
+  modelName.value = ''
+  for (const pw of providersWithModels.value) {
+    if (pw.provider.provider_id !== modelProviderId.value) continue
+    for (const group of pw.model_groups) {
+      if (group.type !== 'llm') continue
+      const found = group.models.find((x) => x.model_id === modelId.value)
+      if (found) modelName.value = found.name
+    }
+  }
+  modelChanged.value = true
+}
+
+const clearDefaultModel = () => {
+  modelProviderId.value = ''
+  modelId.value = ''
+  modelName.value = ''
+  modelChanged.value = true
+  modelKey.value = ''
+}
 
 const isValid = computed(() => name.value.trim() !== '' && prompt.value.trim() !== '')
 
 const handleClose = () => emit('update:open', false)
 
+const handlePickIcon = async () => {
+  if (saving.value) return
+  const path = await Dialogs.OpenFile({
+    CanChooseFiles: true,
+    CanChooseDirectories: false,
+    AllowsMultipleSelection: false,
+    Title: t('assistant.icon.pickTitle'),
+    Filters: [
+      {
+        DisplayName: t('assistant.icon.filterImages'),
+        Pattern: '*.png;*.jpg;*.jpeg;*.gif;*.webp;*.svg',
+      },
+    ],
+  })
+  if (!path) return
+  icon.value = await AgentsService.ReadIconFile(path)
+  iconChanged.value = true
+}
+
 const handleSave = async () => {
   if (!props.agent || !isValid.value || saving.value) return
   saving.value = true
   try {
+    const wantsModelUpdate = modelChanged.value
+    if (wantsModelUpdate && (modelProviderId.value === '') !== (modelId.value === '')) {
+      throw new Error(t('assistant.errors.defaultModelIncomplete'))
+    }
     const updated = await AgentsService.UpdateAgent(props.agent.id, {
       name: name.value.trim(),
       prompt: prompt.value.trim(),
-      icon: null,
-      default_llm_provider_id: null,
-      default_llm_model_id: null,
+      icon: iconChanged.value ? icon.value : null,
+      default_llm_provider_id: wantsModelUpdate ? modelProviderId.value : null,
+      default_llm_model_id: wantsModelUpdate ? modelId.value : null,
       llm_temperature: temperatureEnabled.value ? temperature.value : null,
       llm_top_p: topPEnabled.value ? topP.value : null,
       context_count: contextCount.value,
-      llm_max_tokens: maxTokens.value,
+      llm_max_tokens: maxTokensEnabled.value ? maxTokens.value : null,
     })
     if (!updated) {
       throw new Error(t('assistant.errors.updateFailed'))
@@ -131,208 +250,345 @@ const handleDelete = async () => {
 
 <template>
   <Dialog :open="open" @update:open="handleClose">
-    <DialogContent class="sm:max-w-[820px]">
-      <DialogHeader class="flex flex-row items-center justify-between">
-        <DialogTitle>{{ t('assistant.settings.title') }}</DialogTitle>
-        <Button size="icon" variant="ghost" @click="handleClose">
-          <X class="size-4" />
-        </Button>
-      </DialogHeader>
-
-      <div class="flex gap-6 py-2">
-        <!-- 左侧 tabs -->
-        <div class="flex w-[160px] shrink-0 flex-col gap-2">
-          <button
-            :class="
-              cn(
-                'rounded-md px-3 py-2 text-left text-sm transition-colors',
-                tab === 'model'
-                  ? 'bg-muted text-foreground'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              )
-            "
-            @click="tab = 'model'"
-          >
-            {{ t('assistant.settings.tabs.model') }}
-          </button>
-          <button
-            :class="
-              cn(
-                'rounded-md px-3 py-2 text-left text-sm transition-colors',
-                tab === 'prompt'
-                  ? 'bg-muted text-foreground'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              )
-            "
-            @click="tab = 'prompt'"
-          >
-            {{ t('assistant.settings.tabs.prompt') }}
-          </button>
-          <button
-            :class="
-              cn(
-                'rounded-md px-3 py-2 text-left text-sm transition-colors',
-                tab === 'delete'
-                  ? 'bg-muted text-foreground'
-                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-              )
-            "
-            @click="tab = 'delete'"
-          >
-            {{ t('assistant.settings.tabs.delete') }}
-          </button>
+    <DialogContent
+      size="lg"
+      class="p-0"
+    >
+      <!-- 头部：标题（关闭按钮由 DialogContent 自带） -->
+      <div class="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+        <div class="text-base font-semibold text-foreground">
+          {{ t('assistant.settings.title') }}
         </div>
+      </div>
 
-        <!-- 右侧内容 -->
-        <div class="min-w-0 flex-1">
-          <!-- 模型设置 -->
-          <div v-if="tab === 'model'" class="flex flex-col gap-5">
+      <!-- 内容区：固定高度 422px，内部不随 tab 抖动 -->
+      <div class="h-[422px] px-4 py-4">
+        <div class="flex h-full gap-4">
+          <!-- 左侧 tabs（独立区域） -->
+          <div class="w-[120px] shrink-0">
             <div class="flex flex-col gap-2">
-              <div class="text-sm font-medium text-foreground">
-                {{ t('assistant.settings.model.defaultModel') }}
-              </div>
-              <div class="flex items-center justify-between rounded-md border border-border px-3 py-2">
-                <div class="text-sm text-foreground">
-                  {{ props.agent?.default_llm_provider_id }}/{{ props.agent?.default_llm_model_id }}
-                </div>
-                <div class="text-xs text-muted-foreground">
-                  {{ t('assistant.settings.model.defaultModelHint') }}
-                </div>
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between gap-4">
-              <div class="flex flex-col">
-                <div class="text-sm font-medium text-foreground">
-                  {{ t('assistant.settings.model.temperature') }}
-                </div>
-                <div class="text-xs text-muted-foreground">
-                  {{ t('assistant.settings.model.temperatureHint') }}
-                </div>
-              </div>
-              <Switch v-model:checked="temperatureEnabled" />
-            </div>
-            <div v-if="temperatureEnabled" class="flex items-center gap-3">
-              <input
-                v-model.number="temperature"
-                type="range"
-                min="0"
-                max="2"
-                step="0.05"
-                class="w-full"
-              />
-              <div class="w-[60px] text-right text-sm text-muted-foreground">
-                {{ temperature.toFixed(2) }}
-              </div>
-            </div>
-
-            <div class="flex items-center justify-between gap-4">
-              <div class="flex flex-col">
-                <div class="text-sm font-medium text-foreground">
-                  {{ t('assistant.settings.model.topP') }}
-                </div>
-                <div class="text-xs text-muted-foreground">
-                  {{ t('assistant.settings.model.topPHint') }}
-                </div>
-              </div>
-              <Switch v-model:checked="topPEnabled" />
-            </div>
-            <div v-if="topPEnabled" class="flex items-center gap-3">
-              <input v-model.number="topP" type="range" min="0" max="1" step="0.01" class="w-full" />
-              <div class="w-[60px] text-right text-sm text-muted-foreground">
-                {{ topP.toFixed(2) }}
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-2">
-              <div class="text-sm font-medium text-foreground">
-                {{ t('assistant.settings.model.contextCount') }}
-              </div>
-              <div class="flex items-center gap-3">
-                <input v-model.number="contextCount" type="range" min="0" max="200" step="1" class="w-full" />
-                <div class="w-[60px] text-right text-sm text-muted-foreground">
-                  {{ contextCount }}
-                </div>
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-1.5">
-              <label class="text-sm font-medium text-foreground">
-                {{ t('assistant.settings.model.maxTokens') }}
-              </label>
-              <Input v-model.number="maxTokens" type="number" min="1" max="200000" />
+              <button
+                :class="
+                  cn(
+                    'w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
+                    tab === 'model'
+                      ? 'bg-muted text-foreground'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  )
+                "
+                @click="tab = 'model'"
+              >
+                {{ t('assistant.settings.tabs.model') }}
+              </button>
+              <button
+                :class="
+                  cn(
+                    'w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
+                    tab === 'prompt'
+                      ? 'bg-muted text-foreground'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  )
+                "
+                @click="tab = 'prompt'"
+              >
+                {{ t('assistant.settings.tabs.prompt') }}
+              </button>
+              <button
+                :class="
+                  cn(
+                    'w-full rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
+                    tab === 'delete'
+                      ? 'bg-muted text-foreground'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  )
+                "
+                @click="tab = 'delete'"
+              >
+                {{ t('assistant.settings.tabs.delete') }}
+              </button>
             </div>
           </div>
 
-          <!-- 提示词设置 -->
-          <div v-else-if="tab === 'prompt'" class="flex flex-col gap-4">
-            <div class="flex flex-col gap-1.5">
-              <label class="text-sm font-medium text-foreground">
-                {{ t('assistant.fields.name') }}
-                <span class="text-destructive">*</span>
-              </label>
-              <Input v-model="name" :placeholder="t('assistant.fields.namePlaceholder')" maxlength="100" />
-            </div>
+          <!-- 右侧卡片（明显边框，固定高度，不随 tab 抖动） -->
+          <div class="min-w-0 flex-1">
+            <div
+              class="h-full overflow-auto rounded-2xl border border-border bg-card p-6 shadow-sm dark:border-white/15 dark:shadow-none dark:ring-1 dark:ring-white/5"
+            >
+              <!-- 模型设置 -->
+              <div v-if="tab === 'model'" class="flex flex-col gap-5">
+                <div class="flex flex-col gap-2">
+                  <div class="text-sm font-medium text-foreground">
+                    {{ t('assistant.settings.model.defaultModel') }}
+                  </div>
+                  <div
+                    class="flex items-center justify-between rounded-md border border-border px-3 py-2"
+                  >
+                    <div class="flex min-w-0 items-center gap-2">
+                      <Select :model-value="modelKey" @update:model-value="onModelKeyChange">
+                        <SelectTrigger class="h-9 w-[240px] justify-start">
+                          <div v-if="hasDefaultModel" class="flex min-w-0 items-center gap-2">
+                            <ProviderIcon
+                              :icon="modelProviderId"
+                              :size="16"
+                              class="text-foreground"
+                            />
+                            <div class="min-w-0 truncate text-sm font-medium text-foreground">
+                              {{ modelName || modelId }}
+                            </div>
+                          </div>
+                          <div v-else class="text-sm text-muted-foreground">
+                            {{ t('assistant.settings.model.noDefaultModel') }}
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent class="max-h-[260px]">
+                          <SelectGroup>
+                            <SelectLabel>{{
+                              t('assistant.settings.model.defaultModel')
+                            }}</SelectLabel>
+                            <template
+                              v-for="pw in providersWithModels"
+                              :key="pw.provider.provider_id"
+                            >
+                              <SelectLabel class="mt-2">
+                                {{ pw.provider.name }}
+                              </SelectLabel>
+                              <template v-for="g in pw.model_groups" :key="g.type">
+                                <template v-if="g.type === 'llm'">
+                                  <SelectItem
+                                    v-for="m in g.models"
+                                    :key="pw.provider.provider_id + '::' + m.model_id"
+                                    :value="pw.provider.provider_id + '::' + m.model_id"
+                                  >
+                                    {{ m.name }}
+                                  </SelectItem>
+                                </template>
+                              </template>
+                            </template>
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-            <div class="flex flex-col gap-1.5">
-              <label class="text-sm font-medium text-foreground">
-                {{ t('assistant.fields.prompt') }}
-                <span class="text-destructive">*</span>
-              </label>
-              <textarea
-                v-model="prompt"
-                :placeholder="t('assistant.fields.promptPlaceholder')"
-                maxlength="1000"
-                class="min-h-[260px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-          </div>
+                    <div class="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        :disabled="saving || !hasDefaultModel"
+                        :title="t('assistant.settings.model.clear')"
+                        @click="clearDefaultModel"
+                      >
+                        <Trash2 class="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
 
-          <!-- 删除助手 -->
-          <div v-else class="flex h-[320px] flex-col items-center justify-center gap-4">
-            <div class="text-base font-semibold text-foreground">
-              {{ t('assistant.settings.delete.title') }}
-            </div>
-            <div class="max-w-[420px] text-center text-sm text-muted-foreground">
-              {{ t('assistant.settings.delete.hint') }}
-            </div>
+                <div class="flex items-center justify-between gap-4">
+                  <div class="flex flex-col">
+                    <div class="text-sm font-medium text-foreground">
+                      {{ t('assistant.settings.model.temperature') }}
+                    </div>
+                    <div class="text-xs text-muted-foreground">
+                      {{ t('assistant.settings.model.temperatureHint') }}
+                    </div>
+                  </div>
+                  <Switch v-model:checked="temperatureEnabled" />
+                </div>
+                <div v-if="temperatureEnabled" class="flex items-center gap-3">
+                  <div class="w-full">
+                    <SliderWithTicks
+                      v-model="temperature"
+                      :min="0"
+                      :max="2"
+                      :step="0.05"
+                      :ticks="[
+                        { value: 0, label: '0' },
+                        { value: 0.5, label: '0.5' },
+                        { value: 1, label: '1' },
+                        { value: 1.5, label: '1.5' },
+                        { value: 2, label: '2' },
+                      ]"
+                      :format-value="(v) => v.toFixed(2)"
+                    />
+                  </div>
+                </div>
 
-            <Button variant="destructive" :disabled="saving" @click="deleteConfirmOpen = true">
-              <Trash2 class="mr-2 size-4" />
-              {{ t('assistant.settings.delete.action') }}
-            </Button>
+                <div class="flex items-center justify-between gap-4">
+                  <div class="flex flex-col">
+                    <div class="text-sm font-medium text-foreground">
+                      {{ t('assistant.settings.model.topP') }}
+                    </div>
+                    <div class="text-xs text-muted-foreground">
+                      {{ t('assistant.settings.model.topPHint') }}
+                    </div>
+                  </div>
+                  <Switch v-model:checked="topPEnabled" />
+                </div>
+                <div v-if="topPEnabled" class="flex items-center gap-3">
+                  <div class="w-full">
+                    <SliderWithTicks
+                      v-model="topP"
+                      :min="0"
+                      :max="1"
+                      :step="0.01"
+                      :ticks="[
+                        { value: 0, label: '0' },
+                        { value: 0.25, label: '0.25' },
+                        { value: 0.5, label: '0.5' },
+                        { value: 0.75, label: '0.75' },
+                        { value: 1, label: '1' },
+                      ]"
+                      :format-value="(v) => v.toFixed(2)"
+                    />
+                  </div>
+                </div>
 
-            <AlertDialog :open="deleteConfirmOpen" @update:open="(v) => (deleteConfirmOpen = v)">
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>{{ t('assistant.settings.delete.confirmTitle') }}</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {{ t('assistant.settings.delete.confirmDesc', { name: props.agent?.name ?? '' }) }}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel :disabled="saving">
-                    {{ t('assistant.actions.cancel') }}
-                  </AlertDialogCancel>
-                  <AlertDialogAction class="bg-destructive text-destructive-foreground" :disabled="saving" @click="handleDelete">
-                    {{ t('assistant.settings.delete.action') }}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center justify-between">
+                    <div class="text-sm font-medium text-foreground">
+                      {{ t('assistant.settings.model.contextCount') }}
+                    </div>
+                    <div class="text-sm text-muted-foreground">
+                      {{ displayContextCount }}
+                    </div>
+                  </div>
+                  <SliderWithTicks
+                    v-model="contextCount"
+                    :min="0"
+                    :max="200"
+                    :step="1"
+                    :ticks="[
+                      { value: 0, label: '0' },
+                      { value: 50, label: '50' },
+                      { value: 100, label: '100' },
+                      { value: 150, label: '150' },
+                      { value: 200, label: t('assistant.settings.model.unlimited') },
+                    ]"
+                    :format-value="() => ''"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <div class="flex items-center justify-between gap-4">
+                    <div class="text-sm font-medium text-foreground">
+                      {{ t('assistant.settings.model.maxTokens') }}
+                    </div>
+                    <Switch v-model:checked="maxTokensEnabled" />
+                  </div>
+                  <Input
+                    v-if="maxTokensEnabled"
+                    v-model.number="maxTokens"
+                    type="number"
+                    min="1"
+                    max="200000"
+                  />
+                </div>
+              </div>
+
+              <!-- 提示词设置 -->
+              <div v-else-if="tab === 'prompt'" class="flex flex-col gap-4">
+                <div class="flex flex-col items-center gap-2">
+                  <button
+                    class="flex size-[62px] items-center justify-center rounded-[14px] border border-border bg-white text-foreground dark:border-white/15 dark:bg-white/5"
+                    type="button"
+                    @click="handlePickIcon"
+                  >
+                    <img v-if="icon" :src="icon" class="size-[44px] rounded-md object-cover" />
+                    <LogoIcon v-else class="size-[44px]" />
+                  </button>
+                  <div class="text-xs text-muted-foreground">
+                    {{ t('assistant.icon.hint') }}
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-sm font-medium text-foreground">
+                    {{ t('assistant.fields.name') }}
+                    <span class="text-destructive">*</span>
+                  </label>
+                  <Input
+                    v-model="name"
+                    :placeholder="t('assistant.fields.namePlaceholder')"
+                    maxlength="100"
+                  />
+                </div>
+
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-sm font-medium text-foreground">
+                    {{ t('assistant.fields.prompt') }}
+                    <span class="text-destructive">*</span>
+                  </label>
+                  <textarea
+                    v-model="prompt"
+                    :placeholder="t('assistant.fields.promptPlaceholder')"
+                    maxlength="1000"
+                    class="min-h-[160px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+              </div>
+
+              <!-- 删除助手 -->
+              <div v-else class="flex h-full flex-col items-center justify-center gap-4">
+                <div class="text-base font-semibold text-foreground">
+                  {{ t('assistant.settings.delete.title') }}
+                </div>
+                <div class="max-w-[420px] text-center text-sm text-muted-foreground">
+                  {{ t('assistant.settings.delete.hint') }}
+                </div>
+
+                <Button variant="destructive" :disabled="saving" @click="deleteConfirmOpen = true">
+                  <Trash2 class="mr-2 size-4" />
+                  {{ t('assistant.settings.delete.action') }}
+                </Button>
+
+                <AlertDialog
+                  :open="deleteConfirmOpen"
+                  @update:open="(v) => (deleteConfirmOpen = v)"
+                >
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{{
+                        t('assistant.settings.delete.confirmTitle')
+                      }}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {{
+                          t('assistant.settings.delete.confirmDesc', {
+                            name: props.agent?.name ?? '',
+                          })
+                        }}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel :disabled="saving">
+                        {{ t('assistant.actions.cancel') }}
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        class="bg-destructive text-destructive-foreground"
+                        :disabled="saving"
+                        @click="handleDelete"
+                      >
+                        {{ t('assistant.settings.delete.action') }}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <DialogFooter>
+      <!-- 底部：操作按钮 -->
+      <div
+        class="flex items-center justify-end gap-2 border-t border-border bg-background px-4 py-3"
+      >
         <Button variant="outline" :disabled="saving" @click="handleClose">
           {{ t('assistant.actions.cancel') }}
         </Button>
         <Button v-if="tab !== 'delete'" :disabled="!isValid || saving" @click="handleSave">
           {{ t('assistant.actions.save') }}
         </Button>
-      </DialogFooter>
+      </div>
     </DialogContent>
   </Dialog>
 </template>
-
