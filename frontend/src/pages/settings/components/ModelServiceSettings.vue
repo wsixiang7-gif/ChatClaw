@@ -82,6 +82,13 @@ const handleProviderUpdate = (updated: Provider) => {
   }
 }
 
+// 处理模型列表刷新
+const handleRefresh = () => {
+  if (selectedProviderId.value) {
+    void loadProviderDetail(selectedProviderId.value)
+  }
+}
+
 // 组件挂载时加载数据
 onMounted(() => {
   void loadProviders()
@@ -103,6 +110,7 @@ onMounted(() => {
       :provider-with-models="providerWithModels"
       :loading="loadingDetail"
       @update="handleProviderUpdate"
+      @refresh="handleRefresh"
     />
   </div>
 </template>

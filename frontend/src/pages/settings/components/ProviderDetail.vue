@@ -2,7 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from '@/components/ui/toast'
-import { Eye, EyeOff, LoaderCircle } from 'lucide-vue-next'
+import { Eye, EyeOff, LoaderCircle, Plus, Pencil, Trash2 } from 'lucide-vue-next'
 import ModelIcon from '@/assets/icons/model.svg'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -16,8 +16,20 @@ import {
 import type {
   Provider,
   ProviderWithModels,
+  Model,
 } from '@/../bindings/willchat/internal/services/providers'
-import { ProvidersService, UpdateProviderInput, CheckAPIKeyInput } from '@/../bindings/willchat/internal/services/providers'
+import { ProvidersService, UpdateProviderInput, CheckAPIKeyInput, CreateModelInput, UpdateModelInput } from '@/../bindings/willchat/internal/services/providers'
+import ModelFormDialog from './ModelFormDialog.vue'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 // Azure extra_config 类型
 interface AzureExtraConfig {
@@ -31,6 +43,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   update: [provider: Provider]
+  refresh: []
 }>()
 
 const { t } = useI18n()
@@ -322,6 +335,97 @@ const defaultAccordionValue = computed(() => {
   const groups = props.providerWithModels?.model_groups || []
   return groups.map((g) => g.type)
 })
+
+// 模型对话框相关状态
+const modelDialogOpen = ref(false)
+const editingModel = ref<Model | null>(null)
+const modelFormDialogRef = ref<InstanceType<typeof ModelFormDialog> | null>(null)
+
+// 打开添加模型对话框
+const handleAddModel = () => {
+  editingModel.value = null
+  modelDialogOpen.value = true
+}
+
+// 打开编辑模型对话框
+const handleEditModel = (model: Model) => {
+  editingModel.value = model
+  modelDialogOpen.value = true
+}
+
+// 保存模型（添加或编辑）
+const handleSaveModel = async (data: { modelId: string; name: string; type: string }) => {
+  if (!props.providerWithModels) return
+
+  try {
+    if (editingModel.value) {
+      // 编辑模式
+      await ProvidersService.UpdateModel(
+        props.providerWithModels.provider.provider_id,
+        editingModel.value.model_id,
+        new UpdateModelInput({
+          model_id: data.modelId,
+          name: data.name,
+          type: data.type,
+        })
+      )
+      toast.success(t('settings.modelService.modelUpdated'))
+    } else {
+      // 添加模式
+      await ProvidersService.CreateModel(
+        props.providerWithModels.provider.provider_id,
+        new CreateModelInput({
+          model_id: data.modelId,
+          name: data.name,
+          type: data.type,
+        })
+      )
+      toast.success(t('settings.modelService.modelCreated'))
+    }
+
+    modelDialogOpen.value = false
+    // 触发刷新模型列表
+    emit('refresh')
+  } catch (error) {
+    console.error('Failed to save model:', error)
+    toast.error(String(error))
+  } finally {
+    modelFormDialogRef.value?.resetSaving()
+  }
+}
+
+// 删除确认对话框相关状态
+const deleteDialogOpen = ref(false)
+const deletingModel = ref<Model | null>(null)
+const isDeleting = ref(false)
+
+// 打开删除确认对话框
+const handleDeleteModel = (model: Model) => {
+  deletingModel.value = model
+  deleteDialogOpen.value = true
+}
+
+// 确认删除模型
+const confirmDeleteModel = async () => {
+  if (!props.providerWithModels || !deletingModel.value) return
+
+  isDeleting.value = true
+  try {
+    await ProvidersService.DeleteModel(
+      props.providerWithModels.provider.provider_id,
+      deletingModel.value.model_id
+    )
+    toast.success(t('settings.modelService.modelDeleted'))
+    deleteDialogOpen.value = false
+    // 触发刷新模型列表
+    emit('refresh')
+  } catch (error) {
+    console.error('Failed to delete model:', error)
+    toast.error(String(error))
+  } finally {
+    isDeleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -446,6 +550,14 @@ const defaultAccordionValue = computed(() => {
             />
           </div>
 
+          <!-- 添加模型按钮 -->
+          <div class="flex">
+            <Button variant="outline" size="sm" class="gap-1.5" @click="handleAddModel">
+              <Plus class="size-4" />
+              {{ t('settings.modelService.addModel') }}
+            </Button>
+          </div>
+
           <!-- 模型列表 -->
           <div class="flex flex-col gap-1.5">
             <div
@@ -470,10 +582,27 @@ const defaultAccordionValue = computed(() => {
                       <div
                         v-for="model in group.models"
                         :key="model.model_id"
-                        class="flex items-center gap-2 px-4 py-2"
+                        class="group flex items-center gap-2 px-4 py-2 hover:bg-accent/50"
                       >
                         <ModelIcon class="size-5 shrink-0 text-muted-foreground" />
-                        <span class="text-sm text-foreground">{{ model.name }}</span>
+                        <span class="flex-1 text-sm text-foreground">{{ model.name }}</span>
+                        <!-- 编辑和删除按钮 -->
+                        <div class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            class="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            :title="t('settings.modelService.editModel')"
+                            @click.stop="handleEditModel(model)"
+                          >
+                            <Pencil class="size-3.5" />
+                          </button>
+                          <button
+                            class="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            :title="t('settings.modelService.deleteModel')"
+                            @click.stop="handleDeleteModel(model)"
+                          >
+                            <Trash2 class="size-3.5" />
+                          </button>
+                        </div>
                       </div>
                       <div
                         v-if="group.models.length === 0"
@@ -490,5 +619,38 @@ const defaultAccordionValue = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- 模型表单对话框 -->
+    <ModelFormDialog
+      ref="modelFormDialogRef"
+      v-model:open="modelDialogOpen"
+      :model="editingModel"
+      :provider-name="providerWithModels?.provider.name || ''"
+      @save="handleSaveModel"
+    />
+
+    <!-- 删除确认对话框 -->
+    <AlertDialog v-model:open="deleteDialogOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ t('settings.modelService.deleteConfirmTitle') }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ t('settings.modelService.deleteConfirmMessage', { name: deletingModel?.name }) }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel :disabled="isDeleting">
+            {{ t('settings.modelService.cancel') }}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            :disabled="isDeleting"
+            @click.prevent="confirmDeleteModel"
+          >
+            {{ isDeleting ? t('settings.modelService.deleting') : t('settings.modelService.confirmDelete') }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

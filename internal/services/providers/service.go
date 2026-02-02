@@ -428,3 +428,230 @@ func (s *ProvidersService) checkOllama(ctx context.Context, input CheckAPIKeyInp
 	}
 	return testChatModel(ctx, chatModel), nil
 }
+
+// CreateModel 创建模型
+func (s *ProvidersService) CreateModel(providerID string, input CreateModelInput) (*Model, error) {
+	providerID = strings.TrimSpace(providerID)
+	if providerID == "" {
+		return nil, errs.New("error.provider_id_required")
+	}
+
+	input.ModelID = strings.TrimSpace(input.ModelID)
+	if input.ModelID == "" {
+		return nil, errs.New("error.model_id_required")
+	}
+
+	input.Name = strings.TrimSpace(input.Name)
+	if input.Name == "" {
+		return nil, errs.New("error.model_name_required")
+	}
+
+	input.Type = strings.TrimSpace(input.Type)
+	if input.Type != "llm" && input.Type != "embedding" {
+		return nil, errs.New("error.model_type_invalid")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// 检查供应商是否存在
+	_, err = s.GetProvider(providerID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 检查模型是否已存在
+	var existingCount int
+	existingCount, err = db.NewSelect().
+		Model((*modelModel)(nil)).
+		Where("provider_id = ?", providerID).
+		Where("model_id = ?", input.ModelID).
+		Count(ctx)
+	if err != nil {
+		return nil, errs.Wrap("error.model_check_failed", err)
+	}
+	if existingCount > 0 {
+		return nil, errs.New("error.model_already_exists")
+	}
+
+	// 获取最大排序值
+	var maxSortOrder int
+	err = db.NewSelect().
+		Model((*modelModel)(nil)).
+		Where("provider_id = ?", providerID).
+		Where("type = ?", input.Type).
+		ColumnExpr("COALESCE(MAX(sort_order), 0)").
+		Scan(ctx, &maxSortOrder)
+	if err != nil {
+		return nil, errs.Wrap("error.model_sort_order_failed", err)
+	}
+
+	m := &modelModel{
+		ProviderID: providerID,
+		ModelID:    input.ModelID,
+		Name:       input.Name,
+		Type:       input.Type,
+		IsBuiltin:  false,
+		Enabled:    true,
+		SortOrder:  maxSortOrder + 1,
+	}
+
+	_, err = db.NewInsert().Model(m).Exec(ctx)
+	if err != nil {
+		return nil, errs.Wrap("error.model_create_failed", err)
+	}
+
+	dto := m.toDTO()
+	return &dto, nil
+}
+
+// UpdateModel 更新模型
+func (s *ProvidersService) UpdateModel(providerID string, modelID string, input UpdateModelInput) (*Model, error) {
+	providerID = strings.TrimSpace(providerID)
+	if providerID == "" {
+		return nil, errs.New("error.provider_id_required")
+	}
+
+	modelID = strings.TrimSpace(modelID)
+	if modelID == "" {
+		return nil, errs.New("error.model_id_required")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// 构建更新语句
+	q := db.NewUpdate().
+		Model((*modelModel)(nil)).
+		Where("provider_id = ?", providerID).
+		Where("model_id = ?", modelID).
+		Set("updated_at = ?", time.Now().UTC())
+
+	if input.ModelID != nil {
+		newModelID := strings.TrimSpace(*input.ModelID)
+		if newModelID == "" {
+			return nil, errs.New("error.model_id_required")
+		}
+		q = q.Set("model_id = ?", newModelID)
+	}
+	if input.Name != nil {
+		newName := strings.TrimSpace(*input.Name)
+		if newName == "" {
+			return nil, errs.New("error.model_name_required")
+		}
+		q = q.Set("name = ?", newName)
+	}
+	if input.Type != nil {
+		newType := strings.TrimSpace(*input.Type)
+		if newType != "llm" && newType != "embedding" {
+			return nil, errs.New("error.model_type_invalid")
+		}
+		q = q.Set("type = ?", newType)
+	}
+	if input.Enabled != nil {
+		q = q.Set("enabled = ?", *input.Enabled)
+	}
+
+	result, err := q.Exec(ctx)
+	if err != nil {
+		return nil, errs.Wrap("error.model_update_failed", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return nil, errs.Newf("error.model_not_found", map[string]any{"ModelID": modelID})
+	}
+
+	// 获取更新后的模型（如果 model_id 被修改了，需要用新的 ID）
+	newModelID := modelID
+	if input.ModelID != nil {
+		newModelID = strings.TrimSpace(*input.ModelID)
+	}
+
+	return s.GetModel(providerID, newModelID)
+}
+
+// GetModel 获取单个模型
+func (s *ProvidersService) GetModel(providerID string, modelID string) (*Model, error) {
+	providerID = strings.TrimSpace(providerID)
+	if providerID == "" {
+		return nil, errs.New("error.provider_id_required")
+	}
+
+	modelID = strings.TrimSpace(modelID)
+	if modelID == "" {
+		return nil, errs.New("error.model_id_required")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	var m modelModel
+	err = db.NewSelect().
+		Model(&m).
+		Where("provider_id = ?", providerID).
+		Where("model_id = ?", modelID).
+		Limit(1).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.Newf("error.model_not_found", map[string]any{"ModelID": modelID})
+		}
+		return nil, errs.Wrap("error.model_read_failed", err)
+	}
+
+	dto := m.toDTO()
+	return &dto, nil
+}
+
+// DeleteModel 删除模型
+func (s *ProvidersService) DeleteModel(providerID string, modelID string) error {
+	providerID = strings.TrimSpace(providerID)
+	if providerID == "" {
+		return errs.New("error.provider_id_required")
+	}
+
+	modelID = strings.TrimSpace(modelID)
+	if modelID == "" {
+		return errs.New("error.model_id_required")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result, err := db.NewDelete().
+		Model((*modelModel)(nil)).
+		Where("provider_id = ?", providerID).
+		Where("model_id = ?", modelID).
+		Exec(ctx)
+	if err != nil {
+		return errs.Wrap("error.model_delete_failed", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return errs.Newf("error.model_not_found", map[string]any{"ModelID": modelID})
+	}
+
+	return nil
+}

@@ -58,6 +58,21 @@ type UpdateProviderInput struct {
 	ExtraConfig *string `json:"extra_config"`
 }
 
+// CreateModelInput 创建模型的输入参数
+type CreateModelInput struct {
+	ModelID string `json:"model_id"`
+	Name    string `json:"name"`
+	Type    string `json:"type"` // llm, embedding
+}
+
+// UpdateModelInput 更新模型的输入参数
+type UpdateModelInput struct {
+	ModelID *string `json:"model_id"`
+	Name    *string `json:"name"`
+	Type    *string `json:"type"`
+	Enabled *bool   `json:"enabled"`
+}
+
 // providerModel 数据库模型
 type providerModel struct {
 	bun.BaseModel `bun:"table:providers,alias:p"`
