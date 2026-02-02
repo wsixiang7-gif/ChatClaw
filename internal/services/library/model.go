@@ -44,6 +44,19 @@ type CreateLibraryInput struct {
 	MatchThreshold *float64 `json:"match_threshold"`
 }
 
+// UpdateLibraryInput 更新知识库的输入参数
+type UpdateLibraryInput struct {
+	Name *string `json:"name"`
+
+	RerankProviderID *string `json:"rerank_provider_id"`
+	RerankModelID    *string `json:"rerank_model_id"`
+
+	TopK           *int     `json:"top_k"`
+	ChunkSize      *int     `json:"chunk_size"`
+	ChunkOverlap   *int     `json:"chunk_overlap"`
+	MatchThreshold *float64 `json:"match_threshold"`
+}
+
 // libraryModel 数据库模型
 type libraryModel struct {
 	bun.BaseModel `bun:"table:library,alias:l"`

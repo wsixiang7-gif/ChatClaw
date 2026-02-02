@@ -166,6 +166,33 @@ export default {
     },
     item: {
       menu: '更多操作',
+      rename: '重命名',
+      settings: '设置',
+      delete: '删除',
+    },
+    rename: {
+      title: '重命名知识库',
+      placeholder: '请输入新的名称',
+      confirm: '保存',
+      success: '重命名成功',
+      failed: '重命名失败',
+    },
+    settingsDialog: {
+      title: '知识库设置',
+    },
+    settings: {
+      title: '知识库设置',
+      save: '保存',
+      saved: '已保存',
+      saveFailed: '保存失败',
+    },
+    delete: {
+      title: '确认删除',
+      desc: '确定要删除知识库「{name}」吗？此操作无法撤销。',
+      cancel: '取消',
+      confirm: '删除',
+      success: '删除成功',
+      failed: '删除失败',
     },
     detail: {
       embedding: '嵌入模型',

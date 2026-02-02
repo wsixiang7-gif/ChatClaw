@@ -58,7 +58,7 @@ const rerankKey = ref<string>('') // `${providerId}::${modelId}`
 
 // advanced fields（用字符串承接输入，提交时再转 number）
 // shadcn Slider 使用 number[] 承载（支持 range）
-const topK = ref<number[]>([25])
+const topK = ref<number[]>([20])
 const chunkSize = ref<string>('1024')
 const chunkOverlap = ref<string>('100')
 const matchThreshold = ref<string>('0.5')
@@ -89,7 +89,7 @@ const resetForm = () => {
   isSubmitting.value = false
   name.value = ''
   rerankKey.value = ''
-  topK.value = [25]
+  topK.value = [20]
   chunkSize.value = '1024'
   chunkOverlap.value = '100'
   matchThreshold.value = '0.5'
@@ -179,7 +179,7 @@ const handleSubmit = async () => {
       name: name.value.trim(),
       rerank_provider_id: rerankProviderId || '',
       rerank_model_id: rerankModelId || '',
-      top_k: topK.value[0] ?? 25,
+      top_k: topK.value[0] ?? 20,
       chunk_size: toInt(chunkSize.value) ?? 1024,
       chunk_overlap: toInt(chunkOverlap.value) ?? 100,
       match_threshold: toFloat(matchThreshold.value) ?? 0.5,
@@ -231,7 +231,7 @@ const handleSubmit = async () => {
               :help="t('knowledge.help.topK')"
             />
             <div class="text-sm text-muted-foreground tabular-nums">
-              {{ topK[0] ?? 25 }}
+              {{ topK[0] ?? 20 }}
             </div>
           </div>
           <SliderWithMarks
@@ -242,7 +242,7 @@ const handleSubmit = async () => {
             :disabled="loadingProviders || isSubmitting"
             :marks="[
               { value: 1, label: '1' },
-              { value: 25, label: t('knowledge.create.defaultMark'), emphasize: true },
+              { value: 20, label: t('knowledge.create.defaultMark'), emphasize: true },
               { value: 30, label: '30' },
               { value: 50, label: '50' },
             ]"

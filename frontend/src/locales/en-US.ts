@@ -166,6 +166,30 @@ export default {
     },
     item: {
       menu: 'More actions',
+      rename: 'Rename',
+      settings: 'Settings',
+      delete: 'Delete',
+    },
+    rename: {
+      title: 'Rename knowledge base',
+      placeholder: 'Enter a new name',
+      confirm: 'Save',
+      success: 'Renamed',
+      failed: 'Failed to rename',
+    },
+    settings: {
+      title: 'Knowledge base settings',
+      save: 'Save',
+      saved: 'Saved',
+      saveFailed: 'Failed to save',
+    },
+    delete: {
+      title: 'Confirm delete',
+      desc: 'Delete knowledge base "{name}"? This action cannot be undone.',
+      cancel: 'Cancel',
+      confirm: 'Delete',
+      success: 'Deleted',
+      failed: 'Failed to delete',
     },
     detail: {
       embedding: 'Embedding',

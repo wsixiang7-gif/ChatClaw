@@ -7,6 +7,28 @@ import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
 import CreateLibraryDialog from './components/CreateLibraryDialog.vue'
 import EmbeddingSettingsDialog from './components/EmbeddingSettingsDialog.vue'
+import RenameLibraryDialog from './components/RenameLibraryDialog.vue'
+import EditLibraryDialog from './components/EditLibraryDialog.vue'
+import IconRename from '@/assets/icons/library-rename.svg'
+import IconLibSettings from '@/assets/icons/library-settings.svg'
+import IconDelete from '@/assets/icons/library-delete.svg'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 import type { Library } from '@bindings/willchat/internal/services/library'
 import { LibraryService } from '@bindings/willchat/internal/services/library'
@@ -18,6 +40,10 @@ const { t } = useI18n()
 const activeTab = ref<LibraryTab>('personal')
 const createDialogOpen = ref(false)
 const embeddingSettingsOpen = ref(false)
+const renameOpen = ref(false)
+const editOpen = ref(false)
+const deleteOpen = ref(false)
+const actionLibrary = ref<Library | null>(null)
 
 const libraries = ref<Library[]>([])
 const loading = ref(false)
@@ -77,6 +103,44 @@ const handleCreated = (lib: Library) => {
   )
   selectedLibraryId.value = lib.id
   toast.success(t('knowledge.create.success'))
+}
+
+const handleOpenRename = (lib: Library) => {
+  actionLibrary.value = lib
+  renameOpen.value = true
+}
+
+const handleOpenEdit = (lib: Library) => {
+  actionLibrary.value = lib
+  editOpen.value = true
+}
+
+const handleOpenDelete = (lib: Library) => {
+  actionLibrary.value = lib
+  deleteOpen.value = true
+}
+
+const handleLibraryUpdated = (updated: Library) => {
+  libraries.value = libraries.value.map((l) => (l.id === updated.id ? updated : l))
+  if (selectedLibraryId.value === updated.id) {
+    // selectedLibrary is computed from libraries, no-op
+  }
+}
+
+const confirmDelete = async () => {
+  if (!actionLibrary.value) return
+  try {
+    await LibraryService.DeleteLibrary(actionLibrary.value.id)
+    libraries.value = libraries.value.filter((l) => l.id !== actionLibrary.value?.id)
+    if (selectedLibraryId.value === actionLibrary.value.id) {
+      selectedLibraryId.value = libraries.value[0]?.id ?? null
+    }
+    toast.success(t('knowledge.delete.success'))
+    deleteOpen.value = false
+  } catch (error) {
+    console.error('Failed to delete library:', error)
+    toast.error(getErrorMessage(error) || t('knowledge.delete.failed'))
+  }
 }
 
 onMounted(() => {
@@ -174,15 +238,33 @@ onMounted(() => {
             @click="selectedLibraryId = lib.id"
           >
             <span class="min-w-0 flex-1 truncate">{{ lib.name }}</span>
-            <div
-              role="button"
-              tabindex="0"
-              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background/60 hover:text-foreground group-hover:opacity-100"
-              :title="t('knowledge.item.menu')"
-              @click.stop
-            >
-              <MoreHorizontal class="size-4" />
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background/60 hover:text-foreground group-hover:opacity-100"
+                :title="t('knowledge.item.menu')"
+                @click.stop
+              >
+                <MoreHorizontal class="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="w-40">
+                <DropdownMenuItem class="gap-2" @select="handleOpenRename(lib)">
+                  <IconRename class="size-4" />
+                  {{ t('knowledge.item.rename') }}
+                </DropdownMenuItem>
+                <DropdownMenuItem class="gap-2" @select="handleOpenEdit(lib)">
+                  <IconLibSettings class="size-4" />
+                  {{ t('knowledge.item.settings') }}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  class="gap-2 text-destructive focus:text-destructive"
+                  @select="handleOpenDelete(lib)"
+                >
+                  <IconDelete class="size-4" />
+                  {{ t('knowledge.item.delete') }}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </button>
         </div>
       </div>
@@ -228,5 +310,37 @@ onMounted(() => {
 
     <CreateLibraryDialog v-model:open="createDialogOpen" @created="handleCreated" />
     <EmbeddingSettingsDialog v-model:open="embeddingSettingsOpen" />
+    <RenameLibraryDialog
+      v-model:open="renameOpen"
+      :library="actionLibrary"
+      @updated="handleLibraryUpdated"
+    />
+    <EditLibraryDialog
+      v-model:open="editOpen"
+      :library="actionLibrary"
+      @updated="handleLibraryUpdated"
+    />
+
+    <AlertDialog v-model:open="deleteOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ t('knowledge.delete.title') }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ t('knowledge.delete.desc', { name: actionLibrary?.name }) }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>
+            {{ t('knowledge.delete.cancel') }}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click.prevent="confirmDelete"
+          >
+            {{ t('knowledge.delete.confirm') }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

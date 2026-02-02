@@ -179,3 +179,119 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 	dto := m.toDTO()
 	return &dto, nil
 }
+
+// UpdateLibrary 更新知识库（用于重命名/设置）
+func (s *LibraryService) UpdateLibrary(id int64, input UpdateLibraryInput) (*Library, error) {
+	if id <= 0 {
+		return nil, errs.New("error.library_id_required")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	q := db.NewUpdate().
+		Model((*libraryModel)(nil)).
+		Where("id = ?", id).
+		Set("updated_at = ?", time.Now().UTC())
+
+	if input.Name != nil {
+		name := strings.TrimSpace(*input.Name)
+		if name == "" {
+			return nil, errs.New("error.library_name_required")
+		}
+		if len([]rune(name)) > 128 {
+			return nil, errs.New("error.library_name_too_long")
+		}
+		q = q.Set("name = ?", name)
+	}
+
+	if input.RerankProviderID != nil || input.RerankModelID != nil {
+		rp := ""
+		rm := ""
+		if input.RerankProviderID != nil {
+			rp = strings.TrimSpace(*input.RerankProviderID)
+		}
+		if input.RerankModelID != nil {
+			rm = strings.TrimSpace(*input.RerankModelID)
+		}
+		// 两者必须同时有效
+		if rp == "" || rm == "" {
+			return nil, errs.New("error.library_rerank_required")
+		}
+		q = q.Set("rerank_provider_id = ?", rp).Set("rerank_model_id = ?", rm)
+	}
+
+	if input.TopK != nil {
+		if *input.TopK <= 0 {
+			return nil, errs.New("error.library_topk_invalid")
+		}
+		q = q.Set("top_k = ?", *input.TopK)
+	}
+	if input.ChunkSize != nil {
+		if *input.ChunkSize <= 0 {
+			return nil, errs.New("error.library_chunk_size_invalid")
+		}
+		q = q.Set("chunk_size = ?", *input.ChunkSize)
+	}
+	if input.ChunkOverlap != nil {
+		if *input.ChunkOverlap < 0 {
+			return nil, errs.New("error.library_chunk_overlap_invalid")
+		}
+		q = q.Set("chunk_overlap = ?", *input.ChunkOverlap)
+	}
+	if input.MatchThreshold != nil {
+		if *input.MatchThreshold < 0 || *input.MatchThreshold > 1 {
+			return nil, errs.New("error.library_match_threshold_invalid")
+		}
+		q = q.Set("match_threshold = ?", *input.MatchThreshold)
+	}
+
+	res, err := q.Exec(ctx)
+	if err != nil {
+		return nil, errs.Wrap("error.library_update_failed", err)
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return nil, errs.Newf("error.library_not_found", map[string]any{"ID": id})
+	}
+
+	var m libraryModel
+	if err := db.NewSelect().Model(&m).Where("id = ?", id).Limit(1).Scan(ctx); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.Newf("error.library_not_found", map[string]any{"ID": id})
+		}
+		return nil, errs.Wrap("error.library_read_failed", err)
+	}
+	dto := m.toDTO()
+	return &dto, nil
+}
+
+// DeleteLibrary 删除知识库
+func (s *LibraryService) DeleteLibrary(id int64) error {
+	if id <= 0 {
+		return errs.New("error.library_id_required")
+	}
+
+	db, err := s.db()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	res, err := db.NewDelete().Model((*libraryModel)(nil)).Where("id = ?", id).Exec(ctx)
+	if err != nil {
+		return errs.Wrap("error.library_delete_failed", err)
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return errs.Newf("error.library_not_found", map[string]any{"ID": id})
+	}
+	return nil
+}
