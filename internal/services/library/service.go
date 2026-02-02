@@ -156,30 +156,6 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 		}
 	}
 
-	// 如果前端未指定重排模型，则选择一个默认值（按 models 表的 sort_order/id）
-	if rerankProviderID == "" || rerankModelID == "" {
-		type row struct {
-			ProviderID string `bun:"provider_id"`
-			ModelID    string `bun:"model_id"`
-		}
-		var r row
-		err := db.NewSelect().
-			Table("models").
-			Column("provider_id", "model_id").
-			Where("type = ?", "rerank").
-			OrderExpr("sort_order ASC, id ASC").
-			Limit(1).
-			Scan(ctx, &r)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, errs.New("error.library_rerank_required")
-			}
-			return nil, errs.Wrap("error.library_create_failed", err)
-		}
-		rerankProviderID = r.ProviderID
-		rerankModelID = r.ModelID
-	}
-
 	// sort_order 自动 +1（越新越大）
 	var maxSort sql.NullInt64
 	if err := db.NewSelect().
@@ -266,8 +242,8 @@ func (s *LibraryService) UpdateLibrary(id int64, input UpdateLibraryInput) (*Lib
 		if input.RerankModelID != nil {
 			rm = strings.TrimSpace(*input.RerankModelID)
 		}
-		// 两者必须同时有效
-		if rp == "" || rm == "" {
+		// 两者要么都为空（清空），要么都有值
+		if (rp == "") != (rm == "") {
 			return nil, errs.New("error.library_rerank_required")
 		}
 		q = q.Set("rerank_provider_id = ?", rp).Set("rerank_model_id = ?", rm)

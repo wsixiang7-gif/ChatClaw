@@ -193,6 +193,20 @@ func (s *ProvidersService) UpdateProvider(providerID string, input UpdateProvide
 		if embeddingProviderID != "" && embeddingModelID != "" && embeddingProviderID == providerID {
 			return nil, errs.New("error.cannot_disable_global_embedding_provider")
 		}
+
+		// 禁止关闭其 rerank 模型正被知识库使用的供应商
+		var libraryName string
+		if err := db.NewSelect().
+			Table("library").
+			Column("name").
+			Where("rerank_provider_id = ?", providerID).
+			Limit(1).
+			Scan(ctx, &libraryName); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.Wrap("error.library_read_failed", err)
+		}
+		if libraryName != "" {
+			return nil, errs.Newf("error.cannot_disable_provider_with_rerank_in_use", map[string]any{"LibraryName": libraryName})
+		}
 	}
 
 	// 构建更新语句
@@ -717,6 +731,23 @@ func (s *ProvidersService) DeleteModel(providerID string, modelID string) error 
 		if embeddingProviderID != "" && embeddingModelID != "" &&
 			providerID == embeddingProviderID && modelID == embeddingModelID {
 			return errs.New("error.cannot_delete_global_embedding_model")
+		}
+	}
+
+	// 禁止删除正在被知识库使用的 rerank 模型
+	if m.Type == "rerank" {
+		var libraryName string
+		if err := db.NewSelect().
+			Table("library").
+			Column("name").
+			Where("rerank_provider_id = ?", providerID).
+			Where("rerank_model_id = ?", modelID).
+			Limit(1).
+			Scan(ctx, &libraryName); err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return errs.Wrap("error.library_read_failed", err)
+		}
+		if libraryName != "" {
+			return errs.Newf("error.cannot_delete_rerank_model_in_use", map[string]any{"LibraryName": libraryName})
 		}
 	}
 

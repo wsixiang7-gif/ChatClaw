@@ -107,15 +107,6 @@ const loadEmbeddingReady = async () => {
   }
 }
 
-const ensureDefaultRerank = () => {
-  if (rerankKey.value) return
-  const firstGroup = rerankGroups.value[0]
-  const firstModel = firstGroup?.models?.[0]
-  if (firstGroup && firstModel) {
-    rerankKey.value = `${firstGroup.provider.provider_id}::${firstModel.model_id}`
-  }
-}
-
 const loadProviders = async () => {
   loadingProviders.value = true
   try {
@@ -140,7 +131,6 @@ const loadProviders = async () => {
       }
     }
     rerankGroups.value = out
-    ensureDefaultRerank()
   } catch (error) {
     console.error('Failed to load providers:', error)
     toast.error(getErrorMessage(error) || t('knowledge.providersLoadFailed'))
