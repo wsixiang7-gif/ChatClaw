@@ -267,14 +267,7 @@ onMounted(() => {
           class="w-full max-w-[720px] rounded-2xl border border-border bg-card p-8 shadow-sm dark:border-white/15 dark:shadow-none dark:ring-1 dark:ring-white/5"
         >
           <div class="text-lg font-semibold text-foreground">{{ selectedLibrary.name }}</div>
-          <div class="mt-2 grid grid-cols-2 gap-3 text-sm text-muted-foreground">
-            <div class="flex flex-col gap-1">
-              <div class="text-xs">{{ t('knowledge.detail.embedding') }}</div>
-              <div class="text-foreground">
-                {{ selectedLibrary.embedding_provider_id }} /
-                {{ selectedLibrary.embedding_model_id }}
-              </div>
-            </div>
+          <div class="mt-2 text-sm text-muted-foreground">
             <div class="flex flex-col gap-1">
               <div class="text-xs">{{ t('knowledge.detail.rerank') }}</div>
               <div class="text-foreground">

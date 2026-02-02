@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -78,15 +77,7 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 	if !ok || strings.TrimSpace(embeddingModelID) == "" {
 		return nil, errs.New("error.library_embedding_global_not_set")
 	}
-	embeddingProviderID = strings.TrimSpace(embeddingProviderID)
-	embeddingModelID = strings.TrimSpace(embeddingModelID)
-
-	embeddingDimension := 1536
-	if dimStr, ok := settings.GetValue("embedding_dimension"); ok {
-		if n, err := strconv.Atoi(strings.TrimSpace(dimStr)); err == nil && n > 0 {
-			embeddingDimension = n
-		}
-	}
+	// embedding 配置为全局 settings（不落库到 library 表），这里只做存在性校验
 
 	rerankProviderID := strings.TrimSpace(input.RerankProviderID)
 	rerankModelID := strings.TrimSpace(input.RerankModelID)
@@ -157,10 +148,6 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 
 	m := &libraryModel{
 		Name: name,
-
-		EmbeddingProviderID: embeddingProviderID,
-		EmbeddingModelID:    embeddingModelID,
-		EmbeddingDimension:  embeddingDimension,
 
 		RerankProviderID: rerankProviderID,
 		RerankModelID:    rerankModelID,

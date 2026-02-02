@@ -16,10 +16,6 @@ type Library struct {
 
 	Name string `json:"name"`
 
-	EmbeddingProviderID string `json:"embedding_provider_id"`
-	EmbeddingModelID    string `json:"embedding_model_id"`
-	EmbeddingDimension  int    `json:"embedding_dimension"`
-
 	RerankProviderID string `json:"rerank_provider_id"`
 	RerankModelID    string `json:"rerank_model_id"`
 
@@ -67,10 +63,6 @@ type libraryModel struct {
 
 	Name string `bun:"name,notnull"`
 
-	EmbeddingProviderID string `bun:"embedding_provider_id,notnull"`
-	EmbeddingModelID    string `bun:"embedding_model_id,notnull"`
-	EmbeddingDimension  int    `bun:"embedding_dimension,notnull"`
-
 	RerankProviderID string `bun:"rerank_provider_id,notnull"`
 	RerankModelID    string `bun:"rerank_model_id,notnull"`
 
@@ -103,10 +95,6 @@ func (m *libraryModel) toDTO() Library {
 		UpdatedAt: m.UpdatedAt,
 
 		Name: m.Name,
-
-		EmbeddingProviderID: m.EmbeddingProviderID,
-		EmbeddingModelID:    m.EmbeddingModelID,
-		EmbeddingDimension:  m.EmbeddingDimension,
 
 		RerankProviderID: m.RerankProviderID,
 		RerankModelID:    m.RerankModelID,
