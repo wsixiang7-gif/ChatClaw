@@ -5,13 +5,13 @@ import ToastViewport from './ToastViewport.vue'
 import Toast from './Toast.vue'
 import ToastTitle from './ToastTitle.vue'
 import ToastClose from './ToastClose.vue'
-import { useToast } from './useToast'
+import { useToast, TOAST_DURATION } from './useToast'
 
 const { toasts, dismiss } = useToast()
 </script>
 
 <template>
-  <ToastProvider :duration="3000" swipe-direction="right">
+  <ToastProvider :duration="TOAST_DURATION" swipe-direction="right">
     <Toast
       v-for="t in toasts"
       :key="t.id"

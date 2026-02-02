@@ -14,6 +14,7 @@ import (
 
 	"github.com/cloudwego/eino-ext/components/model/claude"
 	"github.com/cloudwego/eino-ext/components/model/openai"
+	"github.com/cloudwego/eino/components/model"
 	"github.com/cloudwego/eino/schema"
 	"github.com/uptrace/bun"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -252,13 +253,16 @@ func (s *ProvidersService) CheckAPIKey(providerID string, input CheckAPIKeyInput
 	// 根据供应商类型调用不同的 SDK
 	switch provider.Type {
 	case "openai":
-		return s.checkOpenAI(ctx, input, testModelID, false)
+		return s.checkOpenAI(ctx, input, testModelID)
 	case "azure":
 		return s.checkAzure(ctx, input, testModelID)
 	case "anthropic":
 		return s.checkClaude(ctx, input, testModelID)
 	case "gemini":
 		return s.checkGemini(ctx, input, testModelID)
+	case "ollama":
+		// Ollama 本地运行，直接尝试连接检测
+		return s.checkOllama(ctx, input, testModelID)
 	default:
 		return nil, errs.Newf("error.unsupported_provider_type", map[string]any{"Type": provider.Type})
 	}
@@ -291,22 +295,14 @@ func (s *ProvidersService) getFirstLLMModel(providerID string) (string, error) {
 	return m.ModelID, nil
 }
 
-// checkOpenAI 使用 OpenAI SDK 检测
-func (s *ProvidersService) checkOpenAI(ctx context.Context, input CheckAPIKeyInput, modelID string, byAzure bool) (*CheckAPIKeyResult, error) {
-	chatModel, err := openai.NewChatModel(ctx, &openai.ChatModelConfig{
-		APIKey:  input.APIKey,
-		Model:   modelID,
-		BaseURL: input.APIEndpoint,
-		ByAzure: byAzure,
-	})
-	if err != nil {
-		return &CheckAPIKeyResult{
-			Success: false,
-			Message: err.Error(),
-		}, nil
-	}
+// ChatModelGenerator 定义可生成消息的聊天模型接口
+type ChatModelGenerator interface {
+	Generate(ctx context.Context, messages []*schema.Message, opts ...model.Option) (*schema.Message, error)
+}
 
-	_, err = chatModel.Generate(ctx, []*schema.Message{
+// testChatModel 使用聊天模型发送测试消息
+func testChatModel(ctx context.Context, chatModel ChatModelGenerator) *CheckAPIKeyResult {
+	_, err := chatModel.Generate(ctx, []*schema.Message{
 		{
 			Role:    schema.User,
 			Content: "hi",
@@ -316,13 +312,28 @@ func (s *ProvidersService) checkOpenAI(ctx context.Context, input CheckAPIKeyInp
 		return &CheckAPIKeyResult{
 			Success: false,
 			Message: err.Error(),
-		}, nil
+		}
 	}
-
 	return &CheckAPIKeyResult{
 		Success: true,
 		Message: "",
-	}, nil
+	}
+}
+
+// checkOpenAI 使用 OpenAI SDK 检测
+func (s *ProvidersService) checkOpenAI(ctx context.Context, input CheckAPIKeyInput, modelID string) (*CheckAPIKeyResult, error) {
+	chatModel, err := openai.NewChatModel(ctx, &openai.ChatModelConfig{
+		APIKey:  input.APIKey,
+		Model:   modelID,
+		BaseURL: input.APIEndpoint,
+	})
+	if err != nil {
+		return &CheckAPIKeyResult{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+	return testChatModel(ctx, chatModel), nil
 }
 
 // checkAzure 使用 Azure OpenAI SDK 检测
@@ -353,24 +364,7 @@ func (s *ProvidersService) checkAzure(ctx context.Context, input CheckAPIKeyInpu
 			Message: err.Error(),
 		}, nil
 	}
-
-	_, err = chatModel.Generate(ctx, []*schema.Message{
-		{
-			Role:    schema.User,
-			Content: "hi",
-		},
-	})
-	if err != nil {
-		return &CheckAPIKeyResult{
-			Success: false,
-			Message: err.Error(),
-		}, nil
-	}
-
-	return &CheckAPIKeyResult{
-		Success: true,
-		Message: "",
-	}, nil
+	return testChatModel(ctx, chatModel), nil
 }
 
 // checkClaude 使用 Claude SDK 检测
@@ -392,24 +386,7 @@ func (s *ProvidersService) checkClaude(ctx context.Context, input CheckAPIKeyInp
 			Message: err.Error(),
 		}, nil
 	}
-
-	_, err = chatModel.Generate(ctx, []*schema.Message{
-		{
-			Role:    schema.User,
-			Content: "hi",
-		},
-	})
-	if err != nil {
-		return &CheckAPIKeyResult{
-			Success: false,
-			Message: err.Error(),
-		}, nil
-	}
-
-	return &CheckAPIKeyResult{
-		Success: true,
-		Message: "",
-	}, nil
+	return testChatModel(ctx, chatModel), nil
 }
 
 // checkGemini 使用 Gemini SDK 检测
@@ -434,12 +411,16 @@ func (s *ProvidersService) checkGemini(ctx context.Context, input CheckAPIKeyInp
 			Message: err.Error(),
 		}, nil
 	}
+	return testChatModel(ctx, chatModel), nil
+}
 
-	_, err = chatModel.Generate(ctx, []*schema.Message{
-		{
-			Role:    schema.User,
-			Content: "hi",
-		},
+// checkOllama 使用 Ollama（兼容 OpenAI API）检测
+func (s *ProvidersService) checkOllama(ctx context.Context, input CheckAPIKeyInput, modelID string) (*CheckAPIKeyResult, error) {
+	// Ollama 使用 OpenAI 兼容接口，不需要 API Key
+	chatModel, err := openai.NewChatModel(ctx, &openai.ChatModelConfig{
+		APIKey:  "ollama", // Ollama 不需要真实的 API Key，但字段不能为空
+		Model:   modelID,
+		BaseURL: input.APIEndpoint,
 	})
 	if err != nil {
 		return &CheckAPIKeyResult{
@@ -447,9 +428,5 @@ func (s *ProvidersService) checkGemini(ctx context.Context, input CheckAPIKeyInp
 			Message: err.Error(),
 		}, nil
 	}
-
-	return &CheckAPIKeyResult{
-		Success: true,
-		Message: "",
-	}, nil
+	return testChatModel(ctx, chatModel), nil
 }

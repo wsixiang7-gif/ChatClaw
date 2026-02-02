@@ -46,11 +46,16 @@ const showApiKey = ref(false)
 // 检测相关状态
 const isChecking = ref(false)
 
-// 判断是否为 Azure
+// 判断是否为 Azure（Azure 需要额外的配置）
 const isAzure = computed(() => props.providerWithModels?.provider.provider_id === 'azure')
 
 // 判断是否为 Ollama（Ollama 不需要 API Key）
 const isOllama = computed(() => props.providerWithModels?.provider.provider_id === 'ollama')
+
+// 检测按钮是否禁用
+const isCheckDisabled = computed(() => 
+  isSaving.value || isChecking.value || (!isOllama.value && !localApiKey.value.trim())
+)
 
 // 解析 extra_config
 const parseExtraConfig = (configStr: string): AzureExtraConfig => {
@@ -393,7 +398,7 @@ const defaultAccordionValue = computed(() => {
               </div>
               <Button
                 variant="outline"
-                :disabled="isSaving || isChecking || (!isOllama && !localApiKey.trim())"
+                :disabled="isCheckDisabled"
                 class="min-w-[72px]"
                 @click="handleCheck"
               >

@@ -1,5 +1,8 @@
 import { ref, computed } from 'vue'
 
+export const TOAST_DURATION = 3000
+const TOAST_LIMIT = 5
+
 export interface ToastProps {
   id: string
   title?: string
@@ -9,8 +12,6 @@ export interface ToastProps {
 }
 
 const toasts = ref<ToastProps[]>([])
-const TOAST_LIMIT = 5
-const TOAST_REMOVE_DELAY = 300
 
 let count = 0
 
@@ -24,18 +25,11 @@ function addToast(props: Omit<ToastProps, 'id'>) {
   const newToast: ToastProps = {
     id,
     variant: 'default',
-    duration: 3000,
+    duration: TOAST_DURATION,
     ...props,
   }
 
   toasts.value = [newToast, ...toasts.value].slice(0, TOAST_LIMIT)
-
-  // 自动移除
-  if (newToast.duration && newToast.duration > 0) {
-    setTimeout(() => {
-      dismissToast(id)
-    }, newToast.duration)
-  }
 
   return id
 }
