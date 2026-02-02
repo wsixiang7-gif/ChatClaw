@@ -89,6 +89,7 @@ export default {
     },
     // 模型服务
     modelService: {
+      enabled: '已启用',
       apiKey: 'API 密钥',
       apiKeyPlaceholder: '请输入 API 密钥',
       apiKeyRequired: '请先填写 API 密钥',
@@ -100,6 +101,8 @@ export default {
       apiVersionPlaceholder: '例如：2024-02-01',
       apiVersionRequired: '请先填写 API 版本',
       check: '检测',
+      checkSuccess: '检测成功',
+      checkFailed: '检测失败',
       reset: '重置',
       llmModels: '大语言模型',
       embeddingModels: '嵌入模型',
@@ -107,6 +110,24 @@ export default {
       loadingProviders: '加载中...',
       loadFailed: '加载失败',
       formIncomplete: '请先完成必填项',
+      // 模型增删改
+      addModel: '添加模型',
+      editModel: '编辑模型',
+      deleteModel: '删除模型',
+      modelId: '模型 ID',
+      modelIdPlaceholder: '请输入模型 ID，如：gpt-4o',
+      modelName: '模型名称',
+      modelNamePlaceholder: '请输入模型显示名称',
+      modelType: '模型类型',
+      cancel: '取消',
+      save: '保存',
+      modelCreated: '模型添加成功',
+      modelUpdated: '模型更新成功',
+      modelDeleted: '模型删除成功',
+      deleteConfirmTitle: '确认删除',
+      deleteConfirmMessage: '确定要删除模型「{name}」吗？此操作无法撤销。',
+      confirmDelete: '删除',
+      deleting: '删除中...',
     },
     // 关于我们
     about: {

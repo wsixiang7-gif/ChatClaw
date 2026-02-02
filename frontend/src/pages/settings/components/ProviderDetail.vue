@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Eye, EyeOff } from 'lucide-vue-next'
+import { toast } from '@/components/ui/toast'
+import { Eye, EyeOff, LoaderCircle, Plus, Pencil, Trash2 } from 'lucide-vue-next'
 import ModelIcon from '@/assets/icons/model.svg'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
@@ -12,12 +13,23 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { cn } from '@/lib/utils'
 import type {
   Provider,
   ProviderWithModels,
+  Model,
 } from '@/../bindings/willchat/internal/services/providers'
-import { ProvidersService, UpdateProviderInput } from '@/../bindings/willchat/internal/services/providers'
+import { ProvidersService, UpdateProviderInput, CheckAPIKeyInput, CreateModelInput, UpdateModelInput } from '@/../bindings/willchat/internal/services/providers'
+import ModelFormDialog from './ModelFormDialog.vue'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 // Azure extra_config 类型
 interface AzureExtraConfig {
@@ -31,9 +43,38 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   update: [provider: Provider]
+  refresh: []
 }>()
 
 const { t } = useI18n()
+
+// 提取 Wails 错误消息
+const getErrorMessage = (error: unknown): string => {
+  let msg = ''
+  
+  // 先获取 message 字段
+  if (error instanceof Error) {
+    msg = error.message
+  } else if (typeof error === 'string') {
+    msg = error
+  } else if (typeof error === 'object' && error !== null && 'message' in error) {
+    msg = String((error as { message: unknown }).message)
+  } else {
+    msg = String(error)
+  }
+  
+  // 如果 message 是 JSON 字符串，尝试解析并提取内部的 message
+  if (msg.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(msg)
+      if (parsed.message) return parsed.message
+    } catch {
+      // 解析失败，返回原始消息
+    }
+  }
+  
+  return msg
+}
 
 // 本地表单状态
 const localEnabled = ref(false)
@@ -43,11 +84,19 @@ const localApiVersion = ref('') // Azure 专用
 const isSaving = ref(false)
 const showApiKey = ref(false)
 
-// 判断是否为 Azure
+// 检测相关状态
+const isChecking = ref(false)
+
+// 判断是否为 Azure（Azure 需要额外的配置）
 const isAzure = computed(() => props.providerWithModels?.provider.provider_id === 'azure')
 
 // 判断是否为 Ollama（Ollama 不需要 API Key）
 const isOllama = computed(() => props.providerWithModels?.provider.provider_id === 'ollama')
+
+// 检测按钮是否禁用
+const isCheckDisabled = computed(() => 
+  isSaving.value || isChecking.value || (!isOllama.value && !localApiKey.value.trim())
+)
 
 // 解析 extra_config
 const parseExtraConfig = (configStr: string): AzureExtraConfig => {
@@ -202,6 +251,39 @@ const toggleShowApiKey = () => {
   showApiKey.value = !showApiKey.value
 }
 
+// 处理 API Key 检测
+const handleCheck = async () => {
+  if (!props.providerWithModels) return
+
+  isChecking.value = true
+  try {
+    // 构建 extra_config
+    let extraConfig = ''
+    if (isAzure.value && localApiVersion.value) {
+      extraConfig = JSON.stringify({ api_version: localApiVersion.value })
+    }
+
+    const result = await ProvidersService.CheckAPIKey(
+      props.providerWithModels.provider.provider_id,
+      new CheckAPIKeyInput({
+        api_key: localApiKey.value,
+        api_endpoint: localApiEndpoint.value,
+        extra_config: extraConfig,
+      })
+    )
+    if (result?.success) {
+      toast.success(t('settings.modelService.checkSuccess'))
+    } else {
+      toast.error(result?.message || t('settings.modelService.checkFailed'))
+    }
+  } catch (error) {
+    console.error('Failed to check API key:', error)
+    toast.error(getErrorMessage(error))
+  } finally {
+    isChecking.value = false
+  }
+}
+
 // 处理 API Endpoint 保存（失焦时）
 const handleApiEndpointBlur = async () => {
   if (!props.providerWithModels) return
@@ -281,6 +363,95 @@ const defaultAccordionValue = computed(() => {
   const groups = props.providerWithModels?.model_groups || []
   return groups.map((g) => g.type)
 })
+
+// 模型对话框相关状态
+const modelDialogOpen = ref(false)
+const editingModel = ref<Model | null>(null)
+const modelFormDialogRef = ref<InstanceType<typeof ModelFormDialog> | null>(null)
+
+// 打开添加模型对话框
+const handleAddModel = () => {
+  editingModel.value = null
+  modelDialogOpen.value = true
+}
+
+// 打开编辑模型对话框
+const handleEditModel = (model: Model) => {
+  editingModel.value = model
+  modelDialogOpen.value = true
+}
+
+// 保存模型（添加或编辑）
+const handleSaveModel = async (data: { modelId: string; name: string; type: string }) => {
+  if (!props.providerWithModels) return
+
+  try {
+    if (editingModel.value) {
+      // 编辑模式（只允许修改 name）
+      await ProvidersService.UpdateModel(
+        props.providerWithModels.provider.provider_id,
+        editingModel.value.model_id,
+        new UpdateModelInput({
+          name: data.name,
+        })
+      )
+      toast.success(t('settings.modelService.modelUpdated'))
+    } else {
+      // 添加模式
+      await ProvidersService.CreateModel(
+        props.providerWithModels.provider.provider_id,
+        new CreateModelInput({
+          model_id: data.modelId,
+          name: data.name,
+          type: data.type,
+        })
+      )
+      toast.success(t('settings.modelService.modelCreated'))
+    }
+
+    modelDialogOpen.value = false
+    // 触发刷新模型列表
+    emit('refresh')
+  } catch (error) {
+    console.error('Failed to save model:', error)
+    toast.error(getErrorMessage(error))
+  } finally {
+    modelFormDialogRef.value?.resetSaving()
+  }
+}
+
+// 删除确认对话框相关状态
+const deleteDialogOpen = ref(false)
+const deletingModel = ref<Model | null>(null)
+const isDeleting = ref(false)
+
+// 打开删除确认对话框
+const handleDeleteModel = (model: Model) => {
+  deletingModel.value = model
+  deleteDialogOpen.value = true
+}
+
+// 确认删除模型
+const confirmDeleteModel = async () => {
+  if (!props.providerWithModels || !deletingModel.value) return
+
+  isDeleting.value = true
+  try {
+    await ProvidersService.DeleteModel(
+      props.providerWithModels.provider.provider_id,
+      deletingModel.value.model_id
+    )
+    toast.success(t('settings.modelService.modelDeleted'))
+    deleteDialogOpen.value = false
+    // 触发刷新模型列表
+    emit('refresh')
+  } catch (error) {
+    console.error('Failed to delete model:', error)
+    toast.error(getErrorMessage(error))
+  } finally {
+    isDeleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -336,23 +507,34 @@ const defaultAccordionValue = computed(() => {
               {{ t('settings.modelService.apiKey') }}
               <span v-if="!isOllama" class="text-destructive">*</span>
             </label>
-            <div class="relative">
-              <Input
-                v-model="localApiKey"
-                :type="showApiKey ? 'text' : 'password'"
-                :placeholder="t('settings.modelService.apiKeyPlaceholder')"
-                class="pr-10"
-                :disabled="isSaving"
-                @blur="handleApiKeyBlur"
-              />
-              <button
-                type="button"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                @click="toggleShowApiKey"
+            <div class="flex gap-2">
+              <div class="relative flex-1">
+                <Input
+                  v-model="localApiKey"
+                  :type="showApiKey ? 'text' : 'password'"
+                  :placeholder="t('settings.modelService.apiKeyPlaceholder')"
+                  class="pr-10"
+                  :disabled="isSaving"
+                  @blur="handleApiKeyBlur"
+                />
+                <button
+                  type="button"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  @click="toggleShowApiKey"
+                >
+                  <Eye v-if="!showApiKey" class="size-4" />
+                  <EyeOff v-else class="size-4" />
+                </button>
+              </div>
+              <Button
+                variant="outline"
+                :disabled="isCheckDisabled"
+                class="min-w-[72px]"
+                @click="handleCheck"
               >
-                <Eye v-if="!showApiKey" class="size-4" />
-                <EyeOff v-else class="size-4" />
-              </button>
+                <LoaderCircle v-if="isChecking" class="size-4 animate-spin" />
+                <span v-else>{{ t('settings.modelService.check') }}</span>
+              </Button>
             </div>
           </div>
 
@@ -373,7 +555,7 @@ const defaultAccordionValue = computed(() => {
                 :disabled="isSaving"
                 @blur="handleApiEndpointBlur"
               />
-              <Button variant="outline" :disabled="isSaving" @click="handleResetEndpoint">
+              <Button variant="outline" class="min-w-[72px]" :disabled="isSaving" @click="handleResetEndpoint">
                 {{ t('settings.modelService.reset') }}
               </Button>
             </div>
@@ -392,6 +574,14 @@ const defaultAccordionValue = computed(() => {
               :disabled="isSaving"
               @blur="handleApiVersionBlur"
             />
+          </div>
+
+          <!-- 添加模型按钮 -->
+          <div class="flex">
+            <Button variant="outline" size="sm" class="gap-1.5" @click="handleAddModel">
+              <Plus class="size-4" />
+              {{ t('settings.modelService.addModel') }}
+            </Button>
           </div>
 
           <!-- 模型列表 -->
@@ -418,10 +608,30 @@ const defaultAccordionValue = computed(() => {
                       <div
                         v-for="model in group.models"
                         :key="model.model_id"
-                        class="flex items-center gap-2 px-4 py-2"
+                        class="group flex items-center gap-2 px-4 py-2 hover:bg-accent/50"
                       >
                         <ModelIcon class="size-5 shrink-0 text-muted-foreground" />
-                        <span class="text-sm text-foreground">{{ model.name }}</span>
+                        <span class="min-w-0 flex-1 truncate text-sm text-foreground">{{ model.name }}</span>
+                        <!-- 编辑和删除按钮（仅对非内置模型显示） -->
+                        <div
+                          v-if="!model.is_builtin"
+                          class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100"
+                        >
+                          <button
+                            class="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            :title="t('settings.modelService.editModel')"
+                            @click.stop="handleEditModel(model)"
+                          >
+                            <Pencil class="size-3.5" />
+                          </button>
+                          <button
+                            class="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            :title="t('settings.modelService.deleteModel')"
+                            @click.stop="handleDeleteModel(model)"
+                          >
+                            <Trash2 class="size-3.5" />
+                          </button>
+                        </div>
                       </div>
                       <div
                         v-if="group.models.length === 0"
@@ -438,5 +648,38 @@ const defaultAccordionValue = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- 模型表单对话框 -->
+    <ModelFormDialog
+      ref="modelFormDialogRef"
+      v-model:open="modelDialogOpen"
+      :model="editingModel"
+      :provider-name="providerWithModels?.provider.name || ''"
+      @save="handleSaveModel"
+    />
+
+    <!-- 删除确认对话框 -->
+    <AlertDialog v-model:open="deleteDialogOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ t('settings.modelService.deleteConfirmTitle') }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ t('settings.modelService.deleteConfirmMessage', { name: deletingModel?.name }) }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel :disabled="isDeleting">
+            {{ t('settings.modelService.cancel') }}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            :disabled="isDeleting"
+            @click.prevent="confirmDeleteModel"
+          >
+            {{ isDeleting ? t('settings.modelService.deleting') : t('settings.modelService.confirmDelete') }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>
