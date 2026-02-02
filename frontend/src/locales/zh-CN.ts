@@ -112,7 +112,7 @@ export default {
     about: {
       title: '关于我们',
       appName: 'WillChat',
-      copyright: '© 2026 WillChat Sesame Network Technology  版权所有',
+      copyright: '© 2026 武汉芝麻小客服网络科技有限公司 版权所有',
       officialWebsite: '官方网站',
       view: '查看',
     },
