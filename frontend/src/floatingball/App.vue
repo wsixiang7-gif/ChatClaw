@@ -1,0 +1,155 @@
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Events } from '@wailsio/runtime'
+import { FloatingBallService } from '@bindings/willchat/internal/services/floatingball'
+import logoUrl from '@/assets/images/logo.svg?url'
+
+const debugDrag = () => {
+  try {
+    return localStorage.getItem('debugFloatingBallDrag') === '1'
+  } catch {
+    return false
+  }
+}
+const logDrag = (...args: any[]) => {
+  if (!debugDrag()) return
+  // eslint-disable-next-line no-console
+  console.log('[floatingball-drag]', new Date().toISOString(), ...args)
+}
+
+const hovered = ref(false)
+const innerWidth = ref(window.innerWidth)
+const collapsed = computed(() => innerWidth.value <= 36)
+const appActive = ref(true)
+
+const onEnter = () => {
+  hovered.value = true
+  void FloatingBallService.Hover(true)
+}
+
+const onLeave = () => {
+  hovered.value = false
+  void FloatingBallService.Hover(false)
+}
+
+const onPointerDown = (e: PointerEvent) => {
+  // 捕获指针：即使鼠标松开在窗口外，也能收到 pointerup，从而结束拖拽并触发贴边缩小
+  logDrag('pointerdown', { id: e.pointerId, type: e.pointerType, x: e.clientX, y: e.clientY })
+  try {
+    ;(e.currentTarget as HTMLElement | null)?.setPointerCapture?.(e.pointerId)
+    const captured = (e.currentTarget as HTMLElement | null)?.hasPointerCapture?.(e.pointerId)
+    logDrag('setPointerCapture', { id: e.pointerId, captured })
+  } catch {
+    // ignore
+    logDrag('setPointerCapture:failed', { id: e.pointerId })
+  }
+  void FloatingBallService.SetDragging(true)
+}
+const onPointerUp = (e: PointerEvent) => {
+  logDrag('pointerup', { id: e.pointerId, type: e.pointerType, x: e.clientX, y: e.clientY })
+  try {
+    ;(e.currentTarget as HTMLElement | null)?.releasePointerCapture?.(e.pointerId)
+  } catch {
+    // ignore
+  }
+  void FloatingBallService.SetDragging(false)
+}
+const onPointerCancel = () => {
+  logDrag('pointercancel', {})
+  void FloatingBallService.SetDragging(false)
+}
+
+const onDblClick = () => {
+  void FloatingBallService.OpenMainFromUI()
+}
+
+const onClose = () => {
+  void FloatingBallService.CloseFromUI()
+}
+
+const onResize = () => {
+  innerWidth.value = window.innerWidth
+}
+
+const setActive = (active: boolean) => {
+  if (appActive.value === active) return
+  appActive.value = active
+  void FloatingBallService.SetAppActive(active)
+  // 如果应用重新激活且鼠标仍在悬浮球上，触发展开
+  if (active && hovered.value) {
+    void FloatingBallService.Hover(true)
+  }
+}
+
+const onWindowFocus = () => setActive(true)
+const onWindowBlur = () => setActive(false)
+const onVisibilityChange = () => setActive(!document.hidden)
+
+let offMacActive: (() => void) | null = null
+let offMacInactive: (() => void) | null = null
+
+onMounted(() => {
+  // 初始状态：优先以 visibility 判断（切应用时更可靠）
+  setActive(!document.hidden)
+  window.addEventListener('resize', onResize)
+  window.addEventListener('focus', onWindowFocus)
+  window.addEventListener('blur', onWindowBlur)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+
+  // macOS：监听应用激活/失活事件（更准确）
+  offMacActive = Events.On(Events.Types.Mac.ApplicationDidBecomeActive, () => setActive(true))
+  offMacInactive = Events.On(Events.Types.Mac.ApplicationDidResignActive, () => setActive(false))
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  window.removeEventListener('focus', onWindowFocus)
+  window.removeEventListener('blur', onWindowBlur)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  offMacActive?.()
+  offMacInactive?.()
+})
+</script>
+
+<template>
+  <div class="h-screen w-screen bg-transparent select-none">
+    <div
+      class="relative h-full w-full"
+      @mouseenter="onEnter"
+      @mouseleave="onLeave"
+      @pointerdown.capture="onPointerDown"
+      @pointerup.capture="onPointerUp"
+      @pointercancel.capture="onPointerCancel"
+      @dblclick.stop="onDblClick"
+    >
+      <!-- Close button (show on hover) -->
+      <button
+        v-show="hovered && !collapsed && appActive"
+        class="absolute right-2 top-2 z-10 h-5 w-5 rounded-full bg-black/70 text-white text-xs leading-5"
+        style="--wails-draggable: no-drag"
+        @click.stop="onClose"
+        aria-label="close floating ball"
+        title="Close"
+      >
+        ×
+      </button>
+
+      <!-- Ball (draggable) -->
+      <div
+        :class="[
+          'h-full w-full flex items-center justify-center',
+          collapsed ? 'rounded-full bg-black/20' : 'rounded-full bg-transparent',
+        ]"
+        style="--wails-draggable: drag"
+      >
+        <img
+          :src="logoUrl"
+          :class="collapsed ? 'h-6 w-6' : 'h-11 w-11'"
+          alt="WillChat"
+          draggable="false"
+        />
+      </div>
+    </div>
+  </div>
+</template>
+

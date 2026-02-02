@@ -6,6 +6,7 @@ import (
 
 	appservice "willchat/internal/services/app"
 	"willchat/internal/services/browser"
+	"willchat/internal/services/floatingball"
 	"willchat/internal/services/greet"
 	"willchat/internal/services/i18n"
 	"willchat/internal/services/providers"
@@ -57,6 +58,10 @@ func NewApp(opts Options) (*application.App, error) {
 	// 创建主窗口
 	mainWindow := windows.NewMainWindow(app)
 
+	// 创建悬浮球服务（独立 AlwaysOnTop 小窗）
+	floatingBallService := floatingball.NewFloatingBallService(app, mainWindow)
+	app.RegisterService(application.NewService(floatingBallService))
+
 	// 创建子窗口服务
 	windowService, err := windows.NewWindowService(app, windows.DefaultDefinitions())
 	if err != nil {
@@ -81,6 +86,7 @@ func NewApp(opts Options) (*application.App, error) {
 	// 应用启动后再加载设置并应用 Show/Hide（确保 sqlite 已初始化）
 	app.Event.OnApplicationEvent(events.Common.ApplicationStarted, func(_ *application.ApplicationEvent) {
 		trayService.InitFromSettings()
+		floatingBallService.InitFromSettings()
 	})
 
 	// 监听主窗口关闭事件，实现"关闭时最小化"
