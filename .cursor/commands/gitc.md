@@ -18,7 +18,8 @@
    - 规则：英文、小写type/scope、祈使语气、72字符内、无句号
 
 3. **执行提交**（仅输出结果）：
-   - 执行 `git commit -m "..."`
+   - 执行 `git commit -m "..."`（**禁止**添加 `--trailer` 参数）
+   - 若在 PowerShell 下遇到参数/引号解析问题，改用消息文件：`git commit -F <msg_file>`
    - 成功后运行 `git log -1 --oneline` 验证
 
 ## 输出格式
