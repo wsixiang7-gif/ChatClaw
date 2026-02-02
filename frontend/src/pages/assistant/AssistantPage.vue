@@ -113,12 +113,10 @@ onMounted(() => {
             :class="
               cn(
                 'rounded px-3 py-1 text-sm transition-colors',
-                mode === 'team'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                'cursor-not-allowed opacity-50'
               )
             "
-            @click="mode = 'team'"
+            disabled
           >
             {{ t('assistant.modes.team') }}
           </button>
@@ -148,14 +146,14 @@ onMounted(() => {
           @click="activeAgentId = a.id"
         >
           <div
-            class="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-foreground"
+            class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border bg-white text-foreground dark:border-white/15 dark:bg-white/5"
           >
             <img
               v-if="a.icon"
               :src="a.icon"
-              class="size-8 rounded-md bg-white object-contain p-1 dark:bg-white/5"
+              class="size-6 object-contain"
             />
-            <LogoIcon v-else class="size-5 opacity-90" />
+            <LogoIcon v-else class="size-6 opacity-90" />
           </div>
 
           <div class="min-w-0 flex-1">

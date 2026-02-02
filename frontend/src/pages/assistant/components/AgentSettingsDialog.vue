@@ -248,7 +248,7 @@ const handleDelete = async () => {
   <Dialog :open="open" @update:open="handleClose">
     <DialogContent
       size="lg"
-      class="p-0"
+      class="gap-0 p-0"
     >
       <!-- 头部：标题（关闭按钮由 DialogContent 自带） -->
       <div class="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
@@ -257,11 +257,11 @@ const handleDelete = async () => {
         </div>
       </div>
 
-      <!-- 内容区：固定高度 422px，内部不随 tab 抖动 -->
-      <div class="h-[422px] px-4 py-4">
-        <div class="flex h-full gap-4">
+      <!-- 内容区：固定高度，内部不随 tab 抖动 -->
+      <div class="h-[464px] px-4 py-2">
+        <div class="flex h-full">
           <!-- 左侧 tabs（独立区域） -->
-          <div class="w-[120px] shrink-0">
+          <div class="w-[140px] shrink-0 border-r border-border pr-4">
             <div class="flex flex-col gap-2">
               <button
                 :class="
@@ -306,7 +306,7 @@ const handleDelete = async () => {
           </div>
 
           <!-- 右侧卡片（明显边框，固定高度，不随 tab 抖动） -->
-          <div class="min-w-0 flex-1">
+          <div class="min-w-0 flex-1 pl-4">
             <div
               class="h-full overflow-auto rounded-2xl border border-border bg-card p-6 shadow-sm dark:border-white/15 dark:shadow-none dark:ring-1 dark:ring-white/5"
             >
@@ -511,7 +511,6 @@ const handleDelete = async () => {
                 </div>
 
                 <Button variant="destructive" :disabled="saving" @click="deleteConfirmOpen = true">
-                  <Trash2 class="mr-2 size-4" />
                   {{ t('assistant.settings.delete.action') }}
                 </Button>
 
