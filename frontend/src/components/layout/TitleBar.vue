@@ -88,8 +88,10 @@ const handleTitleBarDoubleClick = async () => {
       </button>
     </div>
 
-    <!-- 标签页列表 -->
-    <div class="z-2 ml-2 flex shrink-0 items-center gap-1 self-stretch">
+    <!-- 标签页列表（支持横向滚动） -->
+    <div
+      class="z-2 ml-2 flex min-w-0 flex-1 items-center gap-1 self-stretch overflow-x-auto scrollbar-hide"
+    >
       <button
         v-for="tab in navigationStore.tabs"
         :key="tab.id"
@@ -152,7 +154,7 @@ const handleTitleBarDoubleClick = async () => {
 
     <!-- 右侧空白拖拽/双击区域（避免干扰 tabs 的交互） -->
     <div
-      class="flex-1 self-stretch"
+      class="min-w-4 shrink-0 self-stretch"
       style="--wails-draggable: drag"
       @dblclick="handleTitleBarDoubleClick"
     />
