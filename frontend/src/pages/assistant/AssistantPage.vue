@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Plus } from 'lucide-vue-next'
+import IconAgentAdd from '@/assets/icons/agent-add.svg'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
@@ -93,7 +93,7 @@ onMounted(() => {
 <template>
   <div class="flex h-full w-full overflow-hidden bg-background">
     <!-- 左侧：助手列表 -->
-    <aside class="flex w-[280px] shrink-0 flex-col border-r border-border bg-background">
+    <aside class="flex w-[260px] shrink-0 flex-col border-r border-border">
       <div class="flex items-center justify-between gap-2 p-3">
         <div class="inline-flex rounded-md bg-muted p-1">
           <button
@@ -123,13 +123,18 @@ onMounted(() => {
         </div>
 
         <Button size="icon" variant="ghost" :disabled="loading" @click="createOpen = true">
-          <Plus class="size-4" />
+          <IconAgentAdd class="size-4 text-muted-foreground" />
         </Button>
       </div>
 
       <div class="flex-1 overflow-auto px-2 pb-3">
-        <div v-if="agents.length === 0" class="px-2 py-6 text-sm text-muted-foreground">
-          {{ t('assistant.empty') }}
+        <div
+          v-if="agents.length === 0"
+          class="mx-2 mt-2 flex items-center justify-center rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground"
+        >
+          <div class="text-center text-sm text-muted-foreground">
+            {{ t('assistant.empty') }}
+          </div>
         </div>
 
         <button

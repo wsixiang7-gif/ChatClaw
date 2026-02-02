@@ -319,7 +319,7 @@ const handleDelete = async () => {
                   <div class="flex min-w-0 items-center gap-2">
                     <Select :model-value="modelKey" @update:model-value="onModelKeyChange">
                       <SelectTrigger
-                        class="h-9 w-[240px] justify-start rounded-md border border-border bg-background"
+                        class="h-9 w-[240px] rounded-md border border-border bg-background"
                       >
                           <div v-if="hasDefaultModel" class="flex min-w-0 items-center gap-2">
                             <ProviderIcon

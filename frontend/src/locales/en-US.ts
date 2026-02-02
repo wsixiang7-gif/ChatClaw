@@ -152,7 +152,7 @@ export default {
       personal: 'Personal',
       team: 'Team',
     },
-    empty: 'No agents yet. Click + to create one.',
+    empty: 'No agents yet',
     create: {
       title: 'Create Agent',
     },

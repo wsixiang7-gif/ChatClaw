@@ -156,12 +156,12 @@ onMounted(() => {
     <aside class="flex w-[260px] shrink-0 flex-col border-r border-border">
       <div class="flex items-center justify-between gap-2 px-3 py-3">
         <!-- tabs -->
-        <div class="flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+        <div class="inline-flex rounded-md bg-muted p-1">
           <button
             type="button"
             :class="
               cn(
-                'h-8 rounded-md px-3 text-sm transition-colors',
+                'rounded px-3 py-1 text-sm transition-colors',
                 activeTab === 'personal'
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
@@ -175,7 +175,7 @@ onMounted(() => {
             type="button"
             disabled
             :class="
-              cn('h-8 rounded-md px-3 text-sm text-muted-foreground opacity-50 cursor-not-allowed')
+              cn('rounded px-3 py-1 text-sm transition-colors', 'cursor-not-allowed opacity-50')
             "
             :title="t('knowledge.tabs.teamDisabledTip')"
           >

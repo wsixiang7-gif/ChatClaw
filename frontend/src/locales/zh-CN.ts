@@ -150,7 +150,7 @@ export default {
       personal: '个人',
       team: '团队',
     },
-    empty: '暂无助手，点击右上角 + 创建',
+    empty: '暂无助手',
     create: {
       title: '创建助手',
     },
