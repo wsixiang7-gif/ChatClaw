@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 
+	"willchat/internal/define"
 	appservice "willchat/internal/services/app"
 	"willchat/internal/services/browser"
 	"willchat/internal/services/greet"
@@ -28,6 +29,9 @@ func NewApp(opts Options) (*application.App, error) {
 	// 初始化多语言（设置全局语言）
 	i18nService := i18n.NewService(opts.Locale)
 
+	// 声明主窗口变量，用于单实例回调
+	var mainWindow *application.WebviewWindow
+
 	// 创建应用实例
 	app := application.New(application.Options{
 		Name:        "WillChat",
@@ -41,6 +45,18 @@ func NewApp(opts Options) (*application.App, error) {
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: false,
+		},
+		// 单实例配置：防止多个应用实例同时运行
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: define.SingleInstanceUniqueID,
+			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+				// 当第二个实例启动时，聚焦主窗口
+				if mainWindow != nil {
+					mainWindow.Restore()
+					mainWindow.Show()
+					mainWindow.Focus()
+				}
+			},
 		},
 	})
 
@@ -59,7 +75,7 @@ func NewApp(opts Options) (*application.App, error) {
 	app.RegisterService(application.NewService(library.NewLibraryService(app)))
 
 	// 创建主窗口
-	mainWindow := windows.NewMainWindow(app)
+	mainWindow = windows.NewMainWindow(app)
 
 	// 创建子窗口服务
 	windowService, err := windows.NewWindowService(app, windows.DefaultDefinitions())
