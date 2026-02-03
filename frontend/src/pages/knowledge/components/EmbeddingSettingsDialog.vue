@@ -36,25 +36,50 @@ const loading = ref(false)
 const saving = ref(false)
 
 type Group = { provider: Provider; models: Model[] }
-const groups = ref<Group[]>([])
+const embeddingGroups = ref<Group[]>([])
+const semanticSegmentGroups = ref<Group[]>([])
 
-const selectedKey = ref<string>('') // `${providerId}::${modelId}`
+const SEMANTIC_SEGMENT_NONE = '__none__'
+
+const embeddingSelectedKey = ref<string>('') // `${providerId}::${modelId}`
+const semanticSegmentSelectedKey = ref<string>(SEMANTIC_SEGMENT_NONE) // `${providerId}::${modelId}` or NONE
 const embeddingDimension = ref<string>('1536')
 
-const currentLabel = computed(() => {
-  const [pid, mid] = selectedKey.value.split('::')
+const embeddingCurrentLabel = computed(() => {
+  const [pid, mid] = embeddingSelectedKey.value.split('::')
   if (!pid || !mid) return ''
-  const provider = groups.value.find((g) => g.provider.provider_id === pid)
+  const provider = embeddingGroups.value.find((g) => g.provider.provider_id === pid)
   const model = provider?.models.find((m) => m.model_id === mid)
   return model?.name || ''
 })
 
+const semanticSegmentCurrentLabel = computed(() => {
+  if (!semanticSegmentSelectedKey.value || semanticSegmentSelectedKey.value === SEMANTIC_SEGMENT_NONE) {
+    return t('knowledge.embeddingSettings.noSemanticSegment')
+  }
+  const [pid, mid] = semanticSegmentSelectedKey.value.split('::')
+  if (!pid || !mid) return t('knowledge.embeddingSettings.noSemanticSegment')
+  const provider = semanticSegmentGroups.value.find((g) => g.provider.provider_id === pid)
+  const model = provider?.models.find((m) => m.model_id === mid)
+  return model?.name || t('knowledge.embeddingSettings.noSemanticSegment')
+})
+
 const close = () => emit('update:open', false)
 
-const isSelectionAvailable = computed(() => {
-  const [pid, mid] = selectedKey.value.split('::')
+const isEmbeddingSelectionAvailable = computed(() => {
+  const [pid, mid] = embeddingSelectedKey.value.split('::')
   if (!pid || !mid) return false
-  const provider = groups.value.find((g) => g.provider.provider_id === pid)
+  const provider = embeddingGroups.value.find((g) => g.provider.provider_id === pid)
+  return !!provider?.models.some((m) => m.model_id === mid)
+})
+
+const isSemanticSegmentSelectionAvailable = computed(() => {
+  if (!semanticSegmentSelectedKey.value || semanticSegmentSelectedKey.value === SEMANTIC_SEGMENT_NONE) {
+    return true
+  }
+  const [pid, mid] = semanticSegmentSelectedKey.value.split('::')
+  if (!pid || !mid) return false
+  const provider = semanticSegmentGroups.value.find((g) => g.provider.provider_id === pid)
   return !!provider?.models.some((m) => m.model_id === mid)
 })
 
@@ -78,6 +103,7 @@ const loadGroups = async () => {
     )
 
     const out: Group[] = []
+    const segOut: Group[] = []
     for (const item of details) {
       const embeddingGroup = item.detail?.model_groups?.find((g) => g.type === 'embedding')
       // 只取 enabled 的向量模型
@@ -85,12 +111,21 @@ const loadGroups = async () => {
       if (models.length > 0) {
         out.push({ provider: item.provider, models })
       }
+
+      // 语义分段模型：复用 llm 模型组（仅 enabled）
+      const llmGroup = item.detail?.model_groups?.find((g) => g.type === 'llm')
+      const llmModels = (llmGroup?.models || []).filter((m) => m.enabled)
+      if (llmModels.length > 0) {
+        segOut.push({ provider: item.provider, models: llmModels })
+      }
     }
-    groups.value = out
+    embeddingGroups.value = out
+    semanticSegmentGroups.value = segOut
   } catch (error) {
     console.error('Failed to load embedding model list:', error)
     toast.error(getErrorMessage(error) || t('knowledge.providersLoadFailed'))
-    groups.value = []
+    embeddingGroups.value = []
+    semanticSegmentGroups.value = []
   } finally {
     loading.value = false
   }
@@ -98,17 +133,27 @@ const loadGroups = async () => {
 
 const loadCurrentSettings = async () => {
   try {
-    const [p, m, d] = await Promise.all([
+    const [p, m, d, sp, sm] = await Promise.all([
       SettingsService.Get('embedding_provider_id'),
       SettingsService.Get('embedding_model_id'),
       SettingsService.Get('embedding_dimension'),
+      SettingsService.Get('semantic_segment_provider_id'),
+      SettingsService.Get('semantic_segment_model_id'),
     ])
     const providerId = p?.value || ''
     const modelId = m?.value || ''
     const dim = d?.value || '1536'
     embeddingDimension.value = dim
     if (providerId && modelId) {
-      selectedKey.value = `${providerId}::${modelId}`
+      embeddingSelectedKey.value = `${providerId}::${modelId}`
+    }
+
+    const segProviderId = sp?.value || ''
+    const segModelId = sm?.value || ''
+    if (segProviderId && segModelId) {
+      semanticSegmentSelectedKey.value = `${segProviderId}::${segModelId}`
+    } else {
+      semanticSegmentSelectedKey.value = SEMANTIC_SEGMENT_NONE
     }
   } catch (error) {
     console.error('Failed to load embedding settings:', error)
@@ -117,27 +162,38 @@ const loadCurrentSettings = async () => {
 
 const ensureDefaultSelection = () => {
   // 已有选择且仍可用 -> 保持
-  if (selectedKey.value && isSelectionAvailable.value) return
-  const first = groups.value[0]?.models[0]
-  const pid = groups.value[0]?.provider.provider_id
+  if (embeddingSelectedKey.value && isEmbeddingSelectionAvailable.value) return
+  const first = embeddingGroups.value[0]?.models[0]
+  const pid = embeddingGroups.value[0]?.provider.provider_id
   if (first && pid) {
-    selectedKey.value = `${pid}::${first.model_id}`
+    embeddingSelectedKey.value = `${pid}::${first.model_id}`
   }
+}
+
+const ensureSemanticSegmentSelection = () => {
+  // 可选项：为空或仍可用则保持；不可用则退回 NONE
+  if (!semanticSegmentSelectedKey.value || semanticSegmentSelectedKey.value === SEMANTIC_SEGMENT_NONE) {
+    return
+  }
+  if (isSemanticSegmentSelectionAvailable.value) return
+  semanticSegmentSelectedKey.value = SEMANTIC_SEGMENT_NONE
 }
 
 watch(
   () => props.open,
   async (open) => {
     if (!open) return
-    selectedKey.value = ''
+    embeddingSelectedKey.value = ''
+    semanticSegmentSelectedKey.value = SEMANTIC_SEGMENT_NONE
     embeddingDimension.value = '1536'
     await Promise.all([loadGroups(), loadCurrentSettings()])
     ensureDefaultSelection()
+    ensureSemanticSegmentSelection()
   }
 )
 
 const isValid = computed(() => {
-  if (!isSelectionAvailable.value) return false
+  if (!isEmbeddingSelectionAvailable.value) return false
   const dim = Number.parseInt(embeddingDimension.value, 10)
   return Number.isFinite(dim) && dim > 0
 })
@@ -146,12 +202,22 @@ const handleSave = async () => {
   if (!isValid.value || saving.value) return
   saving.value = true
   try {
-    const [providerId, modelId] = selectedKey.value.split('::')
+    const [providerId, modelId] = embeddingSelectedKey.value.split('::')
     const dim = String(Number.parseInt(embeddingDimension.value, 10))
+
+    const isSegNone =
+      !semanticSegmentSelectedKey.value ||
+      semanticSegmentSelectedKey.value === SEMANTIC_SEGMENT_NONE
+    const [segProviderId, segModelId] = isSegNone
+      ? ['', '']
+      : semanticSegmentSelectedKey.value.split('::')
+
     await Promise.all([
       SettingsService.SetValue('embedding_provider_id', providerId),
       SettingsService.SetValue('embedding_model_id', modelId),
       SettingsService.SetValue('embedding_dimension', dim),
+      SettingsService.SetValue('semantic_segment_provider_id', segProviderId || ''),
+      SettingsService.SetValue('semantic_segment_model_id', segModelId || ''),
     ])
     toast.success(t('knowledge.embeddingSettings.saved'))
     close()
@@ -180,14 +246,43 @@ const handleSave = async () => {
             :help="t('knowledge.help.embeddingModel')"
             required
           />
-          <Select v-model="selectedKey" :disabled="loading || saving">
+          <Select v-model="embeddingSelectedKey" :disabled="loading || saving">
             <SelectTrigger class="w-full">
               <SelectValue :placeholder="t('knowledge.create.selectPlaceholder')">
-                <template v-if="currentLabel">{{ currentLabel }}</template>
+                <template v-if="embeddingCurrentLabel">{{ embeddingCurrentLabel }}</template>
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectGroup v-for="g in groups" :key="g.provider.provider_id">
+              <SelectGroup v-for="g in embeddingGroups" :key="g.provider.provider_id">
+                <SelectLabel>{{ g.provider.name }}</SelectLabel>
+                <SelectItem
+                  v-for="m in g.models"
+                  :key="`${g.provider.provider_id}::${m.model_id}`"
+                  :value="`${g.provider.provider_id}::${m.model_id}`"
+                >
+                  {{ m.name }}
+                </SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <FieldLabel
+            :label="t('knowledge.embeddingSettings.semanticSegmentModel')"
+            :help="t('knowledge.help.semanticSegmentModel')"
+          />
+          <Select v-model="semanticSegmentSelectedKey" :disabled="loading || saving">
+            <SelectTrigger class="w-full">
+              <SelectValue :placeholder="t('knowledge.create.selectPlaceholder')">
+                {{ semanticSegmentCurrentLabel }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem :value="SEMANTIC_SEGMENT_NONE">
+                {{ t('knowledge.embeddingSettings.noSemanticSegment') }}
+              </SelectItem>
+              <SelectGroup v-for="g in semanticSegmentGroups" :key="g.provider.provider_id">
                 <SelectLabel>{{ g.provider.name }}</SelectLabel>
                 <SelectItem
                   v-for="m in g.models"
