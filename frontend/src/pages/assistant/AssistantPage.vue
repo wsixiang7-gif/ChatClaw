@@ -41,12 +41,7 @@ import {
   SelectTrigger,
 } from '@/components/ui/select'
 import { ProviderIcon } from '@/components/ui/provider-icon'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 type ListMode = 'personal' | 'team'
 
@@ -139,8 +134,8 @@ const loadAgents = async () => {
       activeAgentId.value = list[0].id
     }
 
-    // 初始化时更新标签页图标
-    updateCurrentTabIcon()
+    // 初始化时更新标签页图标和标题
+    updateCurrentTab()
   } catch (error: unknown) {
     toast.error(getErrorMessage(error) || t('assistant.errors.loadFailed'))
   } finally {
@@ -267,9 +262,9 @@ const openSettings = (agent: Agent) => {
 const handleUpdated = (updated: Agent) => {
   const idx = agents.value.findIndex((a) => a.id === updated.id)
   if (idx >= 0) agents.value[idx] = updated
-  // 如果更新的是当前选中的助手，更新标签页图标
+  // 如果更新的是当前选中的助手，更新标签页图标和标题
   if (activeAgentId.value === updated.id) {
-    updateCurrentTabIcon()
+    updateCurrentTab()
   }
 }
 
@@ -307,10 +302,11 @@ const handleSelectHistory = (history: ChatHistory) => {
 }
 
 /**
- * 更新当前标签页的图标为选中助手的图标
- * 如果助手没有自定义图标，则使用默认的 logo 图标
+ * 更新当前标签页的图标和标题为选中助手的信息
+ * - 图标：如果助手没有自定义图标，则使用默认的 logo 图标
+ * - 标题：使用助手名称，如果没有选中助手则使用默认标题
  */
-const updateCurrentTabIcon = () => {
+const updateCurrentTab = () => {
   const currentTabId = navigationStore.activeTabId
   if (!currentTabId) return
 
@@ -318,12 +314,14 @@ const updateCurrentTabIcon = () => {
   // 如果助手有自定义图标则使用，否则使用 logo 作为默认图标
   const icon = agent?.icon || getLogoDataUrl()
   navigationStore.updateTabIcon(currentTabId, icon)
+  // 使用助手名称作为标签页标题，没有选中时清除自定义标题（回退到 titleKey）
+  navigationStore.updateTabTitle(currentTabId, agent?.name)
 }
 
-// Watch for active agent changes to update selected model, tab icon, and save to tab state
+// Watch for active agent changes to update selected model, tab info, and save to tab state
 watch(activeAgentId, (newAgentId) => {
   selectDefaultModel()
-  updateCurrentTabIcon()
+  updateCurrentTab()
   // 保存选中状态到当前标签页
   const currentTabId = navigationStore.activeTabId
   if (currentTabId) {
@@ -354,8 +352,8 @@ watch(
         activeAgentId.value = agents.value[0].id
         navigationStore.updateTabAgentId(newTabId, agents.value[0].id)
       }
-      // 更新图标
-      updateCurrentTabIcon()
+      // 更新图标和标题
+      updateCurrentTab()
     }
   }
 )

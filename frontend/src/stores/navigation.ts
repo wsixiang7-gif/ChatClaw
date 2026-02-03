@@ -188,6 +188,17 @@ export const useNavigationStore = defineStore('navigation', () => {
   }
 
   /**
+   * 更新标签页标题
+   * 设置 title 后会优先显示 title，titleKey 作为回退
+   */
+  const updateTabTitle = (tabId: string, title: string | undefined) => {
+    const tab = tabs.value.find((t) => t.id === tabId)
+    if (tab) {
+      tab.title = title
+    }
+  }
+
+  /**
    * 更新标签页的选中助手ID（仅 assistant 模块使用）
    */
   const updateTabAgentId = (tabId: string, agentId: number | null) => {
@@ -239,6 +250,7 @@ export const useNavigationStore = defineStore('navigation', () => {
     closeAllTabs,
     setActiveTab,
     updateTabIcon,
+    updateTabTitle,
     updateTabAgentId,
     getTabAgentId,
     refreshAssistantDefaultIcons,

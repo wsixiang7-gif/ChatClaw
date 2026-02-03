@@ -136,9 +136,9 @@ const handleTitleBarDoubleClick = async () => {
                   />
                 </svg>
               </div>
-              <!-- 标签页标题 -->
+              <!-- 标签页标题：优先使用自定义标题，否则使用翻译键 -->
               <span class="max-w-[100px] truncate text-sm">{{
-                tab.titleKey ? t(tab.titleKey) : tab.title
+                tab.title ?? (tab.titleKey ? t(tab.titleKey) : '')
               }}</span>
             </div>
             <!-- 关闭按钮 -->
