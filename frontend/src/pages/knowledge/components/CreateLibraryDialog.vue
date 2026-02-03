@@ -90,7 +90,19 @@ const currentSemanticSegmentLabel = computed(() => {
 
 const isFormValid = computed(() => {
   const n = name.value.trim()
-  return n !== '' && n.length <= NAME_MAX_LEN
+  if (n === '' || n.length > NAME_MAX_LEN) return false
+
+  // 高级设置展开时校验范围
+  if (advanced.value) {
+    const cs = Number.parseInt(chunkSize.value, 10)
+    const co = Number.parseInt(chunkOverlap.value, 10)
+    const mt = Number.parseFloat(matchThreshold.value)
+    if (!Number.isFinite(cs) || cs < 500 || cs > 5000) return false
+    if (!Number.isFinite(co) || co < 0 || co > 1000) return false
+    if (!Number.isFinite(mt) || mt < 0 || mt > 1) return false
+  }
+
+  return true
 })
 
 const canSubmit = computed(() => {

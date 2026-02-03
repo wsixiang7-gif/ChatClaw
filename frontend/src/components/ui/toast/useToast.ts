@@ -37,7 +37,17 @@ function addToast(props: Omit<ToastProps, 'id'>) {
     ...props,
   }
 
-  toasts.value = [newToast, ...toasts.value].slice(0, TOAST_LIMIT)
+  const newList = [newToast, ...toasts.value]
+  // 清理被截断的 toast 的计时器，避免内存泄漏
+  const removed = newList.slice(TOAST_LIMIT)
+  for (const t of removed) {
+    const timer = toastTimers.get(t.id)
+    if (timer) {
+      clearTimeout(timer)
+      toastTimers.delete(t.id)
+    }
+  }
+  toasts.value = newList.slice(0, TOAST_LIMIT)
 
   // 设置备份计时器，确保 toast 一定会消失
   // 时间比 duration 稍长，给 reka-ui 足够的时间正常处理
