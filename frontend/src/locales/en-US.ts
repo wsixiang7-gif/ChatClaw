@@ -201,6 +201,7 @@ export default {
     },
     errors: {
       loadFailed: 'Failed to load agents',
+      loadModelsFailed: 'Failed to load models',
       createFailed: 'Failed to create agent',
       updateFailed: 'Failed to update agent',
       deleteFailed: 'Failed to delete agent',

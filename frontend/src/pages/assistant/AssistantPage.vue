@@ -80,15 +80,11 @@ const chatInput = ref('')
 const providersWithModels = ref<ProviderWithModels[]>([])
 const selectedModelKey = ref('')
 
-// Mock chat history for each agent
-const mockChatHistories: Record<number, ChatHistory[]> = {
-  1: [
-    { id: 1, title: '我的优惠券为什么无法使用？', createdAt: '2024-01-15' },
-    { id: 2, title: '账户被锁定可能是由于多次输...', createdAt: '2024-01-14' },
-    { id: 3, title: '账户被锁定可能是由于多次输...', createdAt: '2024-01-13' },
-    { id: 4, title: '非常抱歉给您带来不便，请...', createdAt: '2024-01-12' },
-  ],
-}
+/**
+ * Mock 聊天历史数据
+ * TODO: 后续替换为真实的后端 API 调用
+ */
+const chatHistories = ref<ChatHistory[]>([])
 
 const activeAgent = computed(() => {
   if (activeAgentId.value == null) return null
@@ -105,14 +101,20 @@ const hasModels = computed(() => {
   )
 })
 
-// Get chat histories for an agent (max 3)
-const getAgentChatHistories = (agentId: number): ChatHistory[] => {
-  return (mockChatHistories[agentId] || []).slice(0, 3)
+/**
+ * 获取指定助手的聊天历史（最多显示 3 条）
+ * TODO: 后续根据 agentId 从后端获取
+ */
+const getAgentChatHistories = (_agentId: number): ChatHistory[] => {
+  return chatHistories.value.slice(0, 3)
 }
 
-// Get all chat histories for an agent (for the dropdown menu)
-const getAllAgentChatHistories = (agentId: number): ChatHistory[] => {
-  return mockChatHistories[agentId] || []
+/**
+ * 获取指定助手的所有聊天历史（用于下拉菜单）
+ * TODO: 后续根据 agentId 从后端获取
+ */
+const getAllAgentChatHistories = (_agentId: number): ChatHistory[] => {
+  return chatHistories.value
 }
 
 const loadAgents = async () => {
@@ -150,14 +152,13 @@ const loadModels = async () => {
   try {
     const providers = await ProvidersService.ListProviders()
     const enabled = providers.filter((p) => p.enabled)
-    const results: ProviderWithModels[] = []
-    for (const p of enabled) {
-      const withModels = await ProvidersService.GetProviderWithModels(p.provider_id)
-      if (withModels) results.push(withModels)
-    }
-    providersWithModels.value = results
+    // 并行加载所有 provider 的模型
+    const results = await Promise.all(
+      enabled.map((p) => ProvidersService.GetProviderWithModels(p.provider_id))
+    )
+    providersWithModels.value = results.filter(Boolean) as ProviderWithModels[]
   } catch (error: unknown) {
-    console.warn('Failed to load models:', error)
+    toast.error(getErrorMessage(error) || t('assistant.errors.loadModelsFailed'))
   }
 }
 
@@ -200,10 +201,25 @@ const selectDefaultModel = () => {
   selectedModelKey.value = ''
 }
 
+/**
+ * 解析 modelKey (格式: providerId::modelId)
+ * 使用限制分割次数确保 modelId 中包含 :: 时也能正确解析
+ */
+const parseModelKey = (key: string): { providerId: string; modelId: string } | null => {
+  const separatorIndex = key.indexOf('::')
+  if (separatorIndex === -1) return null
+  return {
+    providerId: key.slice(0, separatorIndex),
+    modelId: key.slice(separatorIndex + 2),
+  }
+}
+
 // Get selected model info for display
 const selectedModelInfo = computed(() => {
   if (!selectedModelKey.value) return null
-  const [providerId, modelId] = selectedModelKey.value.split('::')
+  const parsed = parseModelKey(selectedModelKey.value)
+  if (!parsed) return null
+  const { providerId, modelId } = parsed
   for (const pw of providersWithModels.value) {
     if (pw.provider.provider_id !== providerId) continue
     for (const group of pw.model_groups) {

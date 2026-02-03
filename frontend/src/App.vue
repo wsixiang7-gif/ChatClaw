@@ -40,15 +40,21 @@ watch(
 
 /**
  * 主题变化监听 - 当主题切换时更新所有 assistant 标签页的默认图标
+ * 精确检测 dark class 变化，避免其他 class 变化触发不必要的刷新
  */
 let themeObserver: InstanceType<typeof window.MutationObserver> | null = null
+let wasDarkMode = document.documentElement.classList.contains('dark')
 
 onMounted(() => {
   themeObserver = new window.MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.attributeName === 'class') {
-        // 主题变化，刷新所有 assistant 标签页的默认图标
-        navigationStore.refreshAssistantDefaultIcons()
+        const isDarkMode = document.documentElement.classList.contains('dark')
+        // 只在 dark 模式实际切换时才刷新图标
+        if (wasDarkMode !== isDarkMode) {
+          wasDarkMode = isDarkMode
+          navigationStore.refreshAssistantDefaultIcons()
+        }
       }
     }
   })
