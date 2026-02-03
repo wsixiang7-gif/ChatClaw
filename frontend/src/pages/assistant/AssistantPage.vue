@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { ArrowUp } from 'lucide-vue-next'
 import IconAgentAdd from '@/assets/icons/agent-add.svg'
 import IconNewConversation from '@/assets/icons/new-conversation.svg'
 import IconSidebarCollapse from '@/assets/icons/sidebar-collapse.svg'
 import IconSidebarExpand from '@/assets/icons/sidebar-expand.svg'
 import IconSettings from '@/assets/icons/settings.svg'
-import IconSendDisabled from '@/assets/icons/send-disabled.svg'
-import IconSendActive from '@/assets/icons/send-active.svg'
 import IconSelectKnowledge from '@/assets/icons/select-knowledge.svg'
 import IconSelectImage from '@/assets/icons/select-image.svg'
 import { cn } from '@/lib/utils'
@@ -101,13 +100,6 @@ const hasModels = computed(() => {
   return providersWithModels.value.some((pw) =>
     pw.model_groups.some((g) => g.type === 'llm' && g.models.length > 0)
   )
-})
-
-const sendDisabledTip = computed(() => {
-  if (!hasModels.value) return t('assistant.chat.noModel')
-  if (!selectedModelKey.value) return t('assistant.chat.selectModel')
-  if (chatInput.value.trim() === '') return t('assistant.placeholders.enterToSend')
-  return t('assistant.placeholders.enterToSend')
 })
 
 // Get chat histories for an agent (max 3)
@@ -346,7 +338,7 @@ onMounted(() => {
         <div class="flex flex-col gap-1.5">
           <div v-for="a in agents" :key="a.id" class="flex flex-col">
             <!-- Agent item -->
-            <button
+            <div
               :class="
                 cn(
                   'group flex h-11 w-full items-center gap-2 rounded px-2 text-left outline-none transition-colors',
@@ -355,7 +347,11 @@ onMounted(() => {
                     : 'bg-white text-muted-foreground shadow-[0px_1px_4px_0px_rgba(0,0,0,0.1)] hover:bg-accent/50 hover:text-foreground dark:bg-zinc-800/50 dark:shadow-[0px_1px_4px_0px_rgba(255,255,255,0.05)]'
                 )
               "
+              role="button"
+              tabindex="0"
               @click="activeAgentId = a.id"
+              @keydown.enter.prevent="activeAgentId = a.id"
+              @keydown.space.prevent="activeAgentId = a.id"
             >
               <div
                 class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border bg-white text-foreground dark:border-white/15 dark:bg-white/5"
@@ -374,7 +370,7 @@ onMounted(() => {
               <Button
                 size="icon"
                 variant="ghost"
-                class="size-7 opacity-0 group-hover:opacity-100"
+                class="size-7 opacity-0 group-hover:opacity-100 hover:bg-muted/60 dark:hover:bg-white/10"
                 :title="t('assistant.sidebar.newConversation')"
                 @click.stop="handleNewConversation"
               >
@@ -387,7 +383,7 @@ onMounted(() => {
                   <Button
                     size="icon"
                     variant="ghost"
-                    class="size-7 opacity-0 group-hover:opacity-100"
+                    class="size-7 opacity-0 group-hover:opacity-100 hover:bg-muted/60 dark:hover:bg-white/10"
                     :title="t('assistant.actions.settings')"
                     @click.stop
                   >
@@ -419,17 +415,17 @@ onMounted(() => {
                   </DropdownMenuSub>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </button>
+            </div>
 
             <!-- Chat history list (max 3 items) - only show for active agent -->
             <div
               v-if="a.id === activeAgentId && getAgentChatHistories(a.id).length > 0"
-              class="ml-10 mt-1 flex flex-col gap-0.5"
+              class="mt-1 flex flex-col gap-1"
             >
               <button
                 v-for="history in getAgentChatHistories(a.id)"
                 :key="history.id"
-                class="truncate rounded px-2 py-1 text-left text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                class="truncate rounded px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
                 @click="handleSelectHistory(history)"
               >
                 {{ history.title }}
@@ -457,7 +453,7 @@ onMounted(() => {
     <!-- 右侧：聊天区 -->
     <section class="flex flex-1 flex-col overflow-hidden">
       <div class="flex flex-1 items-center justify-center px-6">
-        <div class="flex w-full -translate-y-10 flex-col items-center gap-6">
+        <div class="flex w-full -translate-y-10 flex-col items-center gap-10">
           <div class="flex items-center gap-3">
             <LogoIcon class="size-10 text-foreground" />
             <div class="text-2xl font-semibold text-foreground">
@@ -466,7 +462,7 @@ onMounted(() => {
           </div>
 
           <div
-            class="w-full max-w-[720px] rounded-2xl border border-border bg-background px-5 py-4 shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
+            class="w-full max-w-[800px] rounded-2xl border border-border bg-background px-4 py-4 shadow-sm dark:shadow-none dark:ring-1 dark:ring-white/10"
           >
             <textarea
               v-model="chatInput"
@@ -541,16 +537,19 @@ onMounted(() => {
               <TooltipProvider v-if="!canSend">
                 <Tooltip>
                   <TooltipTrigger as-child>
-                    <Button
-                      size="icon"
-                      class="size-6 rounded-full bg-muted text-muted-foreground hover:bg-muted"
-                      disabled
-                    >
-                      <IconSendDisabled class="size-4" />
-                    </Button>
+                    <!-- disabled button has pointer-events-none; use wrapper to keep tooltip hover -->
+                    <span class="inline-flex">
+                      <Button
+                        size="icon"
+                        class="size-6 rounded-full bg-muted-foreground/20 text-muted-foreground disabled:opacity-100"
+                        disabled
+                      >
+                        <ArrowUp class="size-4" />
+                      </Button>
+                    </span>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>{{ sendDisabledTip }}</p>
+                    <p>{{ t('assistant.placeholders.enterToSend') }}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -561,7 +560,7 @@ onMounted(() => {
                 :title="t('assistant.chat.send')"
                 @click="handleSend"
               >
-                <IconSendActive class="size-4" />
+                <ArrowUp class="size-4" />
               </Button>
             </div>
           </div>
