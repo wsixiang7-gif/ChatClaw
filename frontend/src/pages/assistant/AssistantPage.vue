@@ -261,10 +261,23 @@ const openSettings = (agent: Agent) => {
 
 const handleUpdated = (updated: Agent) => {
   const idx = agents.value.findIndex((a) => a.id === updated.id)
+  // 获取更新前的助手信息，用于判断默认模型是否发生变化
+  const oldAgent = idx >= 0 ? agents.value[idx] : null
+  const hadDefaultModel = oldAgent?.default_llm_provider_id && oldAgent?.default_llm_model_id
+  const hasDefaultModel = updated.default_llm_provider_id && updated.default_llm_model_id
+
   if (idx >= 0) agents.value[idx] = updated
-  // 如果更新的是当前选中的助手，更新标签页图标和标题
+
+  // 如果更新的是当前选中的助手
   if (activeAgentId.value === updated.id) {
     updateCurrentTab()
+    // 判断是否需要同步聊天框的模型选择：
+    // 1. 助手设置了新的默认模型 → 同步到聊天框
+    // 2. 助手的默认模型被清除（从有到无）→ 回退到第一个可用模型
+    // 3. 助手本身就没有默认模型 → 保持聊天框当前选中的模型不变
+    if (hasDefaultModel || hadDefaultModel) {
+      selectDefaultModel()
+    }
   }
 }
 
