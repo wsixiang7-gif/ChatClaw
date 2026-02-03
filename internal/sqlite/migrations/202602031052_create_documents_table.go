@@ -40,8 +40,8 @@ CREATE UNIQUE INDEX idx_docs_library_hash ON documents(library_id, content_hash)
 
 CREATE VIRTUAL TABLE doc_fts USING fts5(
     content,
-    content='document_nodes',
-    content_rowid='id',
+    -- contentless FTS: 只存索引，不保存内容副本；查询用 rowid 回表 document_nodes 拿 content/元信息
+    content='',
     tokenize='jieba'
 );
 
