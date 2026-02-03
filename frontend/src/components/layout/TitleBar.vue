@@ -116,8 +116,8 @@ const handleTitleBarDoubleClick = async () => {
           >
             <div class="flex items-center gap-2">
               <!-- 标签页图标 -->
-              <div v-if="tab.icon" class="size-5 shrink-0 overflow-hidden rounded-md">
-                <img :src="tab.icon" alt="" class="size-full object-cover" />
+              <div v-if="tab.icon" class="flex size-5 shrink-0 items-center justify-center">
+                <img :src="tab.icon" alt="" class="size-full object-contain" />
               </div>
               <div
                 v-else

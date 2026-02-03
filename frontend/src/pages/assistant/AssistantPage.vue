@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ArrowUp } from 'lucide-vue-next'
 import IconAgentAdd from '@/assets/icons/agent-add.svg'
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { getErrorMessage } from '@/composables/useErrorMessage'
 import LogoIcon from '@/assets/images/logo.svg'
-import logoSvgRaw from '@/assets/images/logo.svg?raw'
+import { getLogoDataUrl } from '@/composables/useLogo'
 import CreateAgentDialog from './components/CreateAgentDialog.vue'
 import AgentSettingsDialog from './components/AgentSettingsDialog.vue'
 import { useNavigationStore } from '@/stores'
@@ -59,19 +59,6 @@ interface ChatHistory {
 
 const { t } = useI18n()
 const navigationStore = useNavigationStore()
-
-/**
- * 将 logo SVG 转换为 data URL，用于标签页默认图标
- * 替换 currentColor 为具体颜色以确保在 img 标签中正常显示
- */
-const getLogoDataUrl = () => {
-  // 检测当前是否深色模式
-  const isDark = document.documentElement.classList.contains('dark')
-  // 深色模式用浅色图标，浅色模式用深色图标
-  const color = isDark ? '#e5e5e5' : '#404040'
-  const svgWithColor = logoSvgRaw.replace(/currentColor/g, color)
-  return `data:image/svg+xml,${encodeURIComponent(svgWithColor)}`
-}
 
 const mode = ref<ListMode>('personal')
 
@@ -313,6 +300,18 @@ watch(activeAgentId, () => {
 watch(providersWithModels, () => {
   selectDefaultModel()
 })
+
+// Watch for tab changes - when switching to this assistant tab, update the icon
+// This handles the case when a new tab is created via the + button
+watch(
+  () => navigationStore.activeTabId,
+  () => {
+    // Only update if the current tab is an assistant module
+    if (navigationStore.activeTab?.module === 'assistant') {
+      updateCurrentTabIcon()
+    }
+  }
+)
 
 onMounted(() => {
   loadAgents()

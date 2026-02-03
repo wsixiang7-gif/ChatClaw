@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import DefaultTabIcon from '@/assets/images/tab-default.png'
+import { getLogoDataUrl } from '@/composables/useLogo'
 
 const createTabId = () => `tab-${crypto.randomUUID()}`
 
@@ -184,6 +185,25 @@ export const useNavigationStore = defineStore('navigation', () => {
     }
   }
 
+  /**
+   * 刷新所有 assistant 标签页的默认图标（用于主题切换时更新图标颜色）
+   * 只更新使用默认 logo 图标的标签页（通过检测 data:image/svg+xml 前缀）
+   */
+  const refreshAssistantDefaultIcons = () => {
+    const newLogoDataUrl = getLogoDataUrl()
+    for (const tab of tabs.value) {
+      if (tab.module === 'assistant') {
+        // 检查是否是默认 logo 图标（SVG data URL）或旧的默认图标
+        if (
+          tab.icon === DefaultTabIcon ||
+          tab.icon?.startsWith('data:image/svg+xml')
+        ) {
+          tab.icon = newLogoDataUrl
+        }
+      }
+    }
+  }
+
   return {
     activeModule,
     sidebarCollapsed,
@@ -199,5 +219,6 @@ export const useNavigationStore = defineStore('navigation', () => {
     closeAllTabs,
     setActiveTab,
     updateTabIcon,
+    refreshAssistantDefaultIcons,
   }
 })

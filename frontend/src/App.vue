@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { MainLayout } from '@/components/layout'
 import { Toaster } from '@/components/ui/toast'
@@ -37,6 +37,27 @@ watch(
   },
   { immediate: true }
 )
+
+/**
+ * 主题变化监听 - 当主题切换时更新所有 assistant 标签页的默认图标
+ */
+let themeObserver: InstanceType<typeof window.MutationObserver> | null = null
+
+onMounted(() => {
+  themeObserver = new window.MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.attributeName === 'class') {
+        // 主题变化，刷新所有 assistant 标签页的默认图标
+        navigationStore.refreshAssistantDefaultIcons()
+      }
+    }
+  })
+  themeObserver.observe(document.documentElement, { attributes: true })
+})
+
+onUnmounted(() => {
+  themeObserver?.disconnect()
+})
 </script>
 
 <template>
