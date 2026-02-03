@@ -309,5 +309,29 @@ export default {
       saved: '已保存',
       saveFailed: '保存失败',
     },
+    content: {
+      searchPlaceholder: '搜索',
+      addDocument: '添加文档',
+      empty: {
+        title: '暂无文档',
+        desc: '点击上方按钮添加文档到知识库',
+      },
+      status: {
+        completed: '学习完成',
+        learning: '学习中',
+        failed: '学习失败',
+        pending: '待学习',
+      },
+      menu: {
+        rename: '重命名',
+        delete: '删除',
+      },
+      delete: {
+        title: '确认删除',
+        desc: '确定要删除文档「{name}」吗？此操作无法撤销。',
+        cancel: '取消',
+        confirm: '删除',
+      },
+    },
   },
 }

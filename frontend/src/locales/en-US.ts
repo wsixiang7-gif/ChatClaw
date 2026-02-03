@@ -311,5 +311,29 @@ export default {
       saved: 'Saved',
       saveFailed: 'Failed to save',
     },
+    content: {
+      searchPlaceholder: 'Search',
+      addDocument: 'Add Document',
+      empty: {
+        title: 'No documents yet',
+        desc: 'Click the button above to add documents to the knowledge base',
+      },
+      status: {
+        completed: 'Completed',
+        learning: 'Learning',
+        failed: 'Failed',
+        pending: 'Pending',
+      },
+      menu: {
+        rename: 'Rename',
+        delete: 'Delete',
+      },
+      delete: {
+        title: 'Confirm Delete',
+        desc: 'Are you sure you want to delete "{name}"? This action cannot be undone.',
+        cancel: 'Cancel',
+        confirm: 'Delete',
+      },
+    },
   },
 }
