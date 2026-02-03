@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Dialogs } from '@wailsio/runtime'
-import { Search, Upload } from 'lucide-vue-next'
+import { Search, Upload, Plus } from 'lucide-vue-next'
 import IconUploadFile from '@/assets/icons/upload-file.svg'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
