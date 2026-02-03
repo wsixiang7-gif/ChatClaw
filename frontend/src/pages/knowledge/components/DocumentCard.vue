@@ -107,8 +107,8 @@ const FileIcon = computed(() => {
         class="size-full bg-cover bg-center bg-no-repeat"
         :style="{ backgroundImage: `url(${document.thumbnailUrl})` }"
       />
-      <div v-else class="flex size-full items-center justify-center">
-        <IconDocumentCover class="size-10 text-muted-foreground/40" />
+      <div v-else class="absolute inset-0 flex items-center justify-center">
+        <IconDocumentCover class="size-10 translate-y-1 text-muted-foreground/40" />
       </div>
     </div>
 
