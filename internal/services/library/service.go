@@ -101,9 +101,6 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 	embeddingProviderID = strings.TrimSpace(embeddingProviderID)
 	embeddingModelID = strings.TrimSpace(embeddingModelID)
 
-	rerankProviderID := strings.TrimSpace(input.RerankProviderID)
-	rerankModelID := strings.TrimSpace(input.RerankModelID)
-
 	// 默认值（与 migrations 中的 DEFAULT 保持一致）
 	topK := 20
 	chunkSize := 1024
@@ -172,9 +169,6 @@ func (s *LibraryService) CreateLibrary(input CreateLibraryInput) (*Library, erro
 	m := &libraryModel{
 		Name: name,
 
-		RerankProviderID: rerankProviderID,
-		RerankModelID:    rerankModelID,
-
 		TopK:           topK,
 		ChunkSize:      chunkSize,
 		ChunkOverlap:   chunkOverlap,
@@ -231,22 +225,6 @@ func (s *LibraryService) UpdateLibrary(id int64, input UpdateLibraryInput) (*Lib
 			return nil, errs.Newf("error.library_name_duplicate", map[string]any{"Name": name})
 		}
 		q = q.Set("name = ?", name)
-	}
-
-	if input.RerankProviderID != nil || input.RerankModelID != nil {
-		rp := ""
-		rm := ""
-		if input.RerankProviderID != nil {
-			rp = strings.TrimSpace(*input.RerankProviderID)
-		}
-		if input.RerankModelID != nil {
-			rm = strings.TrimSpace(*input.RerankModelID)
-		}
-		// 两者要么都为空（清空），要么都有值
-		if (rp == "") != (rm == "") {
-			return nil, errs.New("error.library_rerank_required")
-		}
-		q = q.Set("rerank_provider_id = ?", rp).Set("rerank_model_id = ?", rm)
 	}
 
 	if input.TopK != nil {

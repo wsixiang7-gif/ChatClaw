@@ -18,9 +18,6 @@ type Library struct {
 
 	Name string `json:"name"`
 
-	RerankProviderID string `json:"rerank_provider_id"`
-	RerankModelID    string `json:"rerank_model_id"`
-
 	TopK           int     `json:"top_k"`
 	ChunkSize      int     `json:"chunk_size"`
 	ChunkOverlap   int     `json:"chunk_overlap"`
@@ -33,9 +30,6 @@ type Library struct {
 type CreateLibraryInput struct {
 	Name string `json:"name"`
 
-	RerankProviderID string `json:"rerank_provider_id"`
-	RerankModelID    string `json:"rerank_model_id"`
-
 	TopK           *int     `json:"top_k"`
 	ChunkSize      *int     `json:"chunk_size"`
 	ChunkOverlap   *int     `json:"chunk_overlap"`
@@ -45,9 +39,6 @@ type CreateLibraryInput struct {
 // UpdateLibraryInput 更新知识库的输入参数
 type UpdateLibraryInput struct {
 	Name *string `json:"name"`
-
-	RerankProviderID *string `json:"rerank_provider_id"`
-	RerankModelID    *string `json:"rerank_model_id"`
 
 	TopK           *int     `json:"top_k"`
 	ChunkSize      *int     `json:"chunk_size"`
@@ -64,9 +55,6 @@ type libraryModel struct {
 	UpdatedAt time.Time `bun:"updated_at,notnull"`
 
 	Name string `bun:"name,notnull"`
-
-	RerankProviderID string `bun:"rerank_provider_id,notnull"`
-	RerankModelID    string `bun:"rerank_model_id,notnull"`
 
 	TopK           int     `bun:"top_k,notnull"`
 	ChunkSize      int     `bun:"chunk_size,notnull"`
@@ -100,9 +88,6 @@ func (m *libraryModel) toDTO() Library {
 		UpdatedAt: m.UpdatedAt,
 
 		Name: m.Name,
-
-		RerankProviderID: m.RerankProviderID,
-		RerankModelID:    m.RerankModelID,
 
 		TopK:           m.TopK,
 		ChunkSize:      m.ChunkSize,
