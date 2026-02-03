@@ -196,25 +196,11 @@ const selectDefaultModel = () => {
   selectedModelKey.value = ''
 }
 
-/**
- * 解析 modelKey (格式: providerId::modelId)
- * 使用限制分割次数确保 modelId 中包含 :: 时也能正确解析
- */
-const parseModelKey = (key: string): { providerId: string; modelId: string } | null => {
-  const separatorIndex = key.indexOf('::')
-  if (separatorIndex === -1) return null
-  return {
-    providerId: key.slice(0, separatorIndex),
-    modelId: key.slice(separatorIndex + 2),
-  }
-}
-
 // Get selected model info for display
 const selectedModelInfo = computed(() => {
   if (!selectedModelKey.value) return null
-  const parsed = parseModelKey(selectedModelKey.value)
-  if (!parsed) return null
-  const { providerId, modelId } = parsed
+  const [providerId, modelId] = selectedModelKey.value.split('::')
+  if (!providerId || !modelId) return null
   for (const pw of providersWithModels.value) {
     if (pw.provider.provider_id !== providerId) continue
     for (const group of pw.model_groups) {
@@ -290,28 +276,24 @@ const handleDeleted = (id: number) => {
 
 const handleNewConversation = () => {
   // TODO: Implement new conversation logic
-  console.log('New conversation clicked')
 }
 
 const handleSend = () => {
   if (!canSend.value) return
   // TODO: Implement send logic
-  console.log('Send:', chatInput.value, 'Model:', selectedModelKey.value)
 }
 
 const handleSelectKnowledge = () => {
   // TODO: Implement knowledge selection
-  console.log('Select knowledge clicked')
 }
 
 const handleSelectImage = () => {
   // TODO: Implement image selection
-  console.log('Select image clicked')
 }
 
 const handleSelectHistory = (history: ChatHistory) => {
   // TODO: Implement history selection
-  console.log('Select history:', history)
+  void history
 }
 
 /**
@@ -326,7 +308,7 @@ const updateCurrentTab = () => {
   const agent = activeAgent.value
   // 如果助手有自定义图标则使用，否则使用 logo 作为默认图标
   const icon = agent?.icon || getLogoDataUrl()
-  navigationStore.updateTabIcon(currentTabId, icon)
+  navigationStore.updateTabIcon(currentTabId, icon, { isDefault: !agent?.icon })
   // 使用助手名称作为标签页标题，没有选中时清除自定义标题（回退到 titleKey）
   navigationStore.updateTabTitle(currentTabId, agent?.name)
 }

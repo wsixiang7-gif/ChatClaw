@@ -21,6 +21,12 @@ export interface Tab {
   titleKey?: string
   /** 标签页图标URL */
   icon?: string
+  /**
+   * 是否为“默认图标”（可被主题切换时自动刷新）
+   * - true: 默认图标（例如默认 logo）
+   * - false: 自定义图标（不应被覆盖）
+   */
+  iconIsDefault?: boolean
   /** 关联的模块 */
   module: NavModule
   /** AI助手标签页的选中助手ID（仅 assistant 模块使用） */
@@ -106,6 +112,7 @@ export const useNavigationStore = defineStore('navigation', () => {
       titleKey: moduleLabels[module],
       module,
       icon: DefaultTabIcon,
+      iconIsDefault: true,
     }
     tabs.value.push(newTab)
     activeTabId.value = id
@@ -116,7 +123,13 @@ export const useNavigationStore = defineStore('navigation', () => {
    */
   const addTab = (tab: Omit<Tab, 'id'>) => {
     const id = createTabId()
-    const newTab: Tab = { ...tab, icon: tab.icon ?? DefaultTabIcon, id }
+    const icon = tab.icon ?? DefaultTabIcon
+    const newTab: Tab = {
+      ...tab,
+      icon,
+      iconIsDefault: tab.iconIsDefault ?? tab.icon == null,
+      id,
+    }
     tabs.value.push(newTab)
     activeTabId.value = id
     return id
@@ -180,10 +193,15 @@ export const useNavigationStore = defineStore('navigation', () => {
   /**
    * 更新标签页图标
    */
-  const updateTabIcon = (tabId: string, icon: string | undefined) => {
+  const updateTabIcon = (
+    tabId: string,
+    icon: string | undefined,
+    options?: { isDefault?: boolean }
+  ) => {
     const tab = tabs.value.find((t) => t.id === tabId)
     if (tab) {
       tab.icon = icon ?? DefaultTabIcon
+      tab.iconIsDefault = options?.isDefault ?? icon == null
     }
   }
 
@@ -218,18 +236,17 @@ export const useNavigationStore = defineStore('navigation', () => {
 
   /**
    * 刷新所有 assistant 标签页的默认图标（用于主题切换时更新图标颜色）
-   * 只更新使用默认 logo 图标的标签页（通过检测 data:image/svg+xml 前缀）
+   * 只更新“明确标记为默认图标”的标签页，避免覆盖自定义 SVG dataURL
    */
   const refreshAssistantDefaultIcons = () => {
     const newLogoDataUrl = getLogoDataUrl()
     for (const tab of tabs.value) {
       if (tab.module === 'assistant') {
-        // 检查是否是默认 logo 图标（SVG data URL）或旧的默认图标
-        if (
-          tab.icon === DefaultTabIcon ||
-          tab.icon?.startsWith('data:image/svg+xml')
-        ) {
+        // 兼容旧数据：DefaultTabIcon 视为默认图标
+        const isDefault = tab.iconIsDefault === true || tab.icon === DefaultTabIcon
+        if (isDefault) {
           tab.icon = newLogoDataUrl
+          tab.iconIsDefault = true
         }
       }
     }
