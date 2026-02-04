@@ -197,6 +197,8 @@ export default {
       history: '历史聊天记录',
       rename: '重命名',
       delete: '删除',
+      pin: '置顶',
+      unpin: '取消置顶',
     },
     conversation: {
       rename: {

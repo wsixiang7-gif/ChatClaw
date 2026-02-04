@@ -31,7 +31,7 @@ func (s *ConversationsService) db() (*bun.DB, error) {
 	return db, nil
 }
 
-// ListConversations 获取指定助手的会话列表（排除已软删除的）
+// ListConversations 获取指定助手的会话列表（置顶优先，然后按更新时间倒序）
 func (s *ConversationsService) ListConversations(agentID int64) ([]Conversation, error) {
 	if agentID <= 0 {
 		return nil, errs.New("error.agent_id_required")
@@ -49,8 +49,7 @@ func (s *ConversationsService) ListConversations(agentID int64) ([]Conversation,
 	if err := db.NewSelect().
 		Model(&models).
 		Where("agent_id = ?", agentID).
-		Where("is_deleted = ?", false).
-		OrderExpr("updated_at DESC, id DESC").
+		OrderExpr("is_pinned DESC, updated_at DESC, id DESC").
 		Scan(ctx); err != nil {
 		return nil, errs.Wrap("error.conversation_list_failed", err)
 	}
@@ -80,7 +79,6 @@ func (s *ConversationsService) GetConversation(id int64) (*Conversation, error) 
 	if err := db.NewSelect().
 		Model(&m).
 		Where("id = ?", id).
-		Where("is_deleted = ?", false).
 		Limit(1).
 		Scan(ctx); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -136,7 +134,7 @@ func (s *ConversationsService) CreateConversation(input CreateConversationInput)
 		AgentID:     input.AgentID,
 		Name:        name,
 		LastMessage: lastMessage,
-		IsDeleted:   false,
+		IsPinned:    false,
 	}
 
 	if _, err := db.NewInsert().Model(m).Exec(ctx); err != nil {
@@ -147,7 +145,8 @@ func (s *ConversationsService) CreateConversation(input CreateConversationInput)
 	return &dto, nil
 }
 
-// UpdateConversation 更新会话（重命名或更新最后一条消息）
+// UpdateConversation 更新会话（重命名、更新最后一条消息、置顶状态）
+// 注意：每个助手只能有一个置顶会话，置顶新会话时会自动取消该助手下其他会话的置顶
 func (s *ConversationsService) UpdateConversation(id int64, input UpdateConversationInput) (*Conversation, error) {
 	if id <= 0 {
 		return nil, errs.New("error.conversation_id_required")
@@ -161,10 +160,36 @@ func (s *ConversationsService) UpdateConversation(id int64, input UpdateConversa
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	// 如果要置顶，先获取该会话的 agent_id，然后取消该 agent 下所有其他会话的置顶
+	if input.IsPinned != nil && *input.IsPinned {
+		var agentID int64
+		if err := db.NewSelect().
+			Table("conversations").
+			Column("agent_id").
+			Where("id = ?", id).
+			Limit(1).
+			Scan(ctx, &agentID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, errs.Newf("error.conversation_not_found", map[string]any{"ID": id})
+			}
+			return nil, errs.Wrap("error.conversation_read_failed", err)
+		}
+
+		// 取消该 agent 下所有其他会话的置顶
+		if _, err := db.NewUpdate().
+			Model((*conversationModel)(nil)).
+			Where("agent_id = ?", agentID).
+			Where("id != ?", id).
+			Where("is_pinned = ?", true).
+			Set("is_pinned = ?", false).
+			Exec(ctx); err != nil {
+			return nil, errs.Wrap("error.conversation_update_failed", err)
+		}
+	}
+
 	q := db.NewUpdate().
 		Model((*conversationModel)(nil)).
-		Where("id = ?", id).
-		Where("is_deleted = ?", false)
+		Where("id = ?", id)
 
 	if input.Name != nil {
 		name := strings.TrimSpace(*input.Name)
@@ -183,6 +208,10 @@ func (s *ConversationsService) UpdateConversation(id int64, input UpdateConversa
 		q = q.Set("last_message = ?", strings.TrimSpace(*input.LastMessage))
 	}
 
+	if input.IsPinned != nil {
+		q = q.Set("is_pinned = ?", *input.IsPinned)
+	}
+
 	result, err := q.Exec(ctx)
 	if err != nil {
 		return nil, errs.Wrap("error.conversation_update_failed", err)
@@ -196,7 +225,7 @@ func (s *ConversationsService) UpdateConversation(id int64, input UpdateConversa
 	return s.GetConversation(id)
 }
 
-// DeleteConversation 软删除会话
+// DeleteConversation 删除会话
 func (s *ConversationsService) DeleteConversation(id int64) error {
 	if id <= 0 {
 		return errs.New("error.conversation_id_required")
@@ -210,12 +239,9 @@ func (s *ConversationsService) DeleteConversation(id int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	result, err := db.NewUpdate().
+	result, err := db.NewDelete().
 		Model((*conversationModel)(nil)).
 		Where("id = ?", id).
-		Where("is_deleted = ?", false).
-		Set("is_deleted = ?", true).
-		Set("updated_at = ?", sqlite.NowUTC()).
 		Exec(ctx)
 	if err != nil {
 		return errs.Wrap("error.conversation_delete_failed", err)
@@ -242,13 +268,10 @@ func (s *ConversationsService) DeleteConversationsByAgentID(agentID int64) error
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// 软删除所有该助手的会话
-	_, err = db.NewUpdate().
+	// 删除所有该助手的会话
+	_, err = db.NewDelete().
 		Model((*conversationModel)(nil)).
 		Where("agent_id = ?", agentID).
-		Where("is_deleted = ?", false).
-		Set("is_deleted = ?", true).
-		Set("updated_at = ?", sqlite.NowUTC()).
 		Exec(ctx)
 	if err != nil {
 		return errs.Wrap("error.conversation_delete_failed", err)

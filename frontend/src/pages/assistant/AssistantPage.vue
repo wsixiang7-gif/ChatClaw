@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowUp, MoreHorizontal } from 'lucide-vue-next'
+import { ArrowUp, MoreHorizontal, Pin, PinOff } from 'lucide-vue-next'
 import IconAgentAdd from '@/assets/icons/agent-add.svg'
 import IconNewConversation from '@/assets/icons/new-conversation.svg'
 import IconSidebarCollapse from '@/assets/icons/sidebar-collapse.svg'
@@ -175,14 +175,24 @@ const loadAgents = async () => {
   }
 }
 
-const loadConversations = async (agentId: number) => {
+const loadConversations = async (agentId: number, preserveSelection = false) => {
   conversationsLoading.value = true
+  const previousConversationId = activeConversationId.value
   try {
     const list = await ConversationsService.ListConversations(agentId)
     conversations.value = list || []
-    // Don't auto-select any conversation when loading
-    activeConversationId.value = null
-    chatMessages.value = []
+    if (preserveSelection && previousConversationId !== null) {
+      // 保持当前选中状态（如果会话仍存在）
+      const stillExists = list?.some((c) => c.id === previousConversationId)
+      if (!stillExists) {
+        activeConversationId.value = null
+        chatMessages.value = []
+      }
+    } else {
+      // Don't auto-select any conversation when loading
+      activeConversationId.value = null
+      chatMessages.value = []
+    }
   } catch (error: unknown) {
     toast.error(getErrorMessage(error) || t('assistant.errors.loadConversationsFailed'))
     conversations.value = []
@@ -353,7 +363,11 @@ const handleSend = async () => {
         })
       )
       if (newConversation) {
-        conversations.value = [newConversation, ...conversations.value]
+        // 添加新会话并排序（置顶优先）
+        conversations.value = [newConversation, ...conversations.value].sort((a, b) => {
+          if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        })
         activeConversationId.value = newConversation.id
       }
     } catch (error: unknown) {
@@ -369,9 +383,8 @@ const handleSend = async () => {
         })
       )
       if (updated) {
-        // Update in list and move to top (since updated_at changed)
-        conversations.value = conversations.value.filter((c) => c.id !== updated.id)
-        conversations.value = [updated, ...conversations.value]
+        // 更新并重新排序（置顶优先，然后按更新时间倒序）
+        handleConversationUpdated(updated)
       }
     } catch (error: unknown) {
       console.error('Failed to update conversation:', error)
@@ -409,8 +422,38 @@ const handleOpenDeleteConversation = (conv: Conversation) => {
   deleteConversationOpen.value = true
 }
 
+const handleTogglePin = async (conv: Conversation) => {
+  const isPinning = !conv.is_pinned
+  try {
+    await ConversationsService.UpdateConversation(
+      conv.id,
+      new UpdateConversationInput({
+        is_pinned: isPinning,
+      })
+    )
+    // 重新加载列表以获取正确的排序和置顶状态
+    // （置顶时其他会话可能被取消置顶）
+    if (activeAgentId.value) {
+      await loadConversations(activeAgentId.value, true)
+    }
+  } catch (error) {
+    console.error('Failed to toggle pin:', error)
+    toast.error(getErrorMessage(error) || t('assistant.errors.updateConversationFailed'))
+  }
+}
+
 const handleConversationUpdated = (updated: Conversation) => {
-  conversations.value = conversations.value.map((c) => (c.id === updated.id ? updated : c))
+  // Update and re-sort (pinned first, then by updated_at desc)
+  conversations.value = conversations.value
+    .map((c) => (c.id === updated.id ? updated : c))
+    .sort((a, b) => {
+      // Pinned items first
+      if (a.is_pinned !== b.is_pinned) {
+        return a.is_pinned ? -1 : 1
+      }
+      // Then by updated_at desc
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    })
 }
 
 const confirmDeleteConversation = async () => {
@@ -656,6 +699,7 @@ onMounted(() => {
                 @click="handleSelectConversation(conv)"
                 @keydown.enter.prevent="handleSelectConversation(conv)"
               >
+                <Pin v-if="conv.is_pinned" class="size-3 shrink-0 text-muted-foreground" />
                 <span class="min-w-0 flex-1 truncate">{{ conv.name }}</span>
                 <!-- Conversation menu -->
                 <DropdownMenu>
@@ -666,6 +710,11 @@ onMounted(() => {
                     <MoreHorizontal class="size-3.5" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" class="w-36">
+                    <DropdownMenuItem class="gap-2" @select="handleTogglePin(conv)">
+                      <PinOff v-if="conv.is_pinned" class="size-4 text-muted-foreground" />
+                      <Pin v-else class="size-4 text-muted-foreground" />
+                      {{ conv.is_pinned ? t('assistant.menu.unpin') : t('assistant.menu.pin') }}
+                    </DropdownMenuItem>
                     <DropdownMenuItem class="gap-2" @select="handleOpenRenameConversation(conv)">
                       <IconRename class="size-4 text-muted-foreground" />
                       {{ t('assistant.menu.rename') }}

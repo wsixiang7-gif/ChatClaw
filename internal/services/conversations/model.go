@@ -16,6 +16,7 @@ type Conversation struct {
 	AgentID     int64  `json:"agent_id"`
 	Name        string `json:"name"`
 	LastMessage string `json:"last_message"`
+	IsPinned    bool   `json:"is_pinned"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -32,6 +33,7 @@ type CreateConversationInput struct {
 type UpdateConversationInput struct {
 	Name        *string `json:"name"`
 	LastMessage *string `json:"last_message"`
+	IsPinned    *bool   `json:"is_pinned"`
 }
 
 // conversationModel 数据库模型
@@ -45,7 +47,7 @@ type conversationModel struct {
 	AgentID     int64  `bun:"agent_id,notnull"`
 	Name        string `bun:"name,notnull"`
 	LastMessage string `bun:"last_message,notnull"`
-	IsDeleted   bool   `bun:"is_deleted,notnull"`
+	IsPinned    bool   `bun:"is_pinned,notnull"`
 }
 
 // BeforeInsert 在 INSERT 时自动设置 created_at 和 updated_at
@@ -73,6 +75,7 @@ func (m *conversationModel) toDTO() Conversation {
 		AgentID:     m.AgentID,
 		Name:        m.Name,
 		LastMessage: m.LastMessage,
+		IsPinned:    m.IsPinned,
 
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,

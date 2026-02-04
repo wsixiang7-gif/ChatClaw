@@ -200,6 +200,8 @@ export default {
       history: 'Chat History',
       rename: 'Rename',
       delete: 'Delete',
+      pin: 'Pin',
+      unpin: 'Unpin',
     },
     conversation: {
       rename: {
