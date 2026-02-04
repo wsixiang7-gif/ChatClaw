@@ -13,9 +13,16 @@ import {
 import IconRename from '@/assets/icons/library-rename.svg'
 import IconDelete from '@/assets/icons/library-delete.svg'
 import IconPdf from '@/assets/icons/file-pdf.svg'
+import IconWord from '@/assets/icons/file-word.svg'
+import IconExcel from '@/assets/icons/file-excel.svg'
+import IconText from '@/assets/icons/file-text.svg'
+import IconMarkdown from '@/assets/icons/file-markdown.svg'
+import IconHtml from '@/assets/icons/file-html.svg'
+import IconCsv from '@/assets/icons/file-csv.svg'
+import IconOfd from '@/assets/icons/file-ofd.svg'
 import IconDocumentCover from '@/assets/icons/document-cover.svg'
 
-export type DocumentStatus = 'pending' | 'learning' | 'completed' | 'failed'
+export type DocumentStatus = 'pending' | 'parsing' | 'learning' | 'completed' | 'failed'
 
 export interface Document {
   id: number
@@ -58,6 +65,15 @@ const statusConfig = computed(() => {
         iconClass: 'text-background',
         show: true,
       }
+    case 'parsing':
+      return {
+        label: `${props.document.progress || 0}% ${t('knowledge.content.status.parsing')}`,
+        icon: null,
+        // 半透明黑底 + 白字，表示进行中
+        class: 'bg-black/50 text-white dark:bg-white/15 dark:text-white/90',
+        iconClass: '',
+        show: true,
+      }
     case 'learning':
       return {
         label: `${props.document.progress || 0}% ${t('knowledge.content.status.learning')}`,
@@ -76,6 +92,15 @@ const statusConfig = computed(() => {
         iconClass: 'text-foreground/50',
         show: true,
       }
+    case 'pending':
+      return {
+        label: t('knowledge.content.status.pending'),
+        icon: null,
+        // 浅背景 + 边框，表示待处理
+        class: 'bg-background/90 text-foreground/60 ring-1 ring-foreground/10',
+        iconClass: '',
+        show: true,
+      }
     default:
       return {
         label: '',
@@ -89,10 +114,30 @@ const statusConfig = computed(() => {
 
 const FileIcon = computed(() => {
   const fileType = props.document.fileType?.toLowerCase()
-  if (fileType === 'pdf') {
-    return IconPdf
+  switch (fileType) {
+    case 'pdf':
+      return IconPdf
+    case 'doc':
+    case 'docx':
+      return IconWord
+    case 'xls':
+    case 'xlsx':
+      return IconExcel
+    case 'txt':
+      return IconText
+    case 'md':
+    case 'markdown':
+      return IconMarkdown
+    case 'html':
+    case 'htm':
+      return IconHtml
+    case 'csv':
+      return IconCsv
+    case 'ofd':
+      return IconOfd
+    default:
+      return FileText
   }
-  return FileText
 })
 </script>
 

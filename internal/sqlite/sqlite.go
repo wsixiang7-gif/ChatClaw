@@ -138,5 +138,12 @@ func resolveDBPath() (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
+
+	// 创建 documents 目录
+	docsDir := filepath.Join(dir, "documents")
+	if err := os.MkdirAll(docsDir, 0o755); err != nil {
+		return "", err
+	}
+
 	return filepath.Join(dir, define.DefaultSQLiteFileName), nil
 }

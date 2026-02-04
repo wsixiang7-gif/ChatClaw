@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"io/fs"
 
-	"willchat/internal/services/agents"
 	"willchat/internal/define"
+	"willchat/internal/services/agents"
 	appservice "willchat/internal/services/app"
 	"willchat/internal/services/browser"
+	"willchat/internal/services/document"
 	"willchat/internal/services/greet"
 	"willchat/internal/services/i18n"
 	"willchat/internal/services/library"
@@ -15,6 +16,7 @@ import (
 	"willchat/internal/services/settings"
 	"willchat/internal/services/tray"
 	"willchat/internal/services/windows"
+	"willchat/internal/taskmanager"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -77,6 +79,14 @@ func NewApp(opts Options) (*application.App, error) {
 
 	// 注册知识库服务
 	app.RegisterService(application.NewService(library.NewLibraryService(app)))
+
+	// 初始化任务管理器（最大 4 个并发工作协程）
+	if err := taskmanager.Init(app, 4); err != nil {
+		app.Logger.Error("failed to init task manager", "error", err)
+	}
+
+	// 注册文档服务
+	app.RegisterService(application.NewService(document.NewDocumentService(app)))
 
 	// 创建主窗口
 	mainWindow = windows.NewMainWindow(app)
