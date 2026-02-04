@@ -70,6 +70,11 @@ type FloatingBallService struct {
 	lastDock     DockSide
 	lastCollapsed bool
 
+	// macOS: expanding from collapsed may cause a spurious immediate "leave" during resize/move.
+	// We ignore only very short leave events right after enter.
+	lastHoverEnterAt         time.Time
+	lastHoverEnterWasCollapsed bool
+
 	ignoreMoveUntil time.Time
 	snapTimer       *time.Timer
 	rehideTimer     *time.Timer
@@ -226,7 +231,21 @@ func (s *FloatingBallService) Hover(entered bool) {
 		return
 	}
 
-	s.hovered = entered
+	now := time.Now()
+	enterAgeMs := int64(-1)
+	if !s.lastHoverEnterAt.IsZero() {
+		enterAgeMs = now.Sub(s.lastHoverEnterAt).Milliseconds()
+	}
+	s.debugLog("Hover", map[string]any{
+		"entered": entered,
+		"dragging": s.dragging,
+		"dock": s.dock,
+		"collapsed": s.collapsed,
+		"appActive": s.appActive,
+		"visible": s.visible,
+		"enterAgeMs": enterAgeMs,
+		"enterWasCollapsed": s.lastHoverEnterWasCollapsed,
+	})
 
 	// Cancel any pending idle dock
 	if s.idleDockTimer != nil {
@@ -240,13 +259,28 @@ func (s *FloatingBallService) Hover(entered bool) {
 		s.rehideTimer = nil
 	}
 
+	// Ignore very short leave right after enter *only if* we expanded from collapsed,
+	// otherwise users won't be able to move away quickly to re-hide.
+	if !entered && s.lastHoverEnterWasCollapsed && !s.lastHoverEnterAt.IsZero() && now.Sub(s.lastHoverEnterAt) <= 250*time.Millisecond {
+		s.debugLog("Hover:ignore_leave", map[string]any{
+			"enterAgeMs": now.Sub(s.lastHoverEnterAt).Milliseconds(),
+		})
+		s.hovered = true
+		return
+	}
+
+	s.hovered = entered
+
 	// Dragging: ignore hover enter/leave side effects, otherwise mouseleave during drag
 	// may schedule a re-hide that teleports the window back to the docked edge.
 	if s.dragging {
+		s.debugLog("Hover:skip_dragging", map[string]any{})
 		return
 	}
 
 	if entered {
+		s.lastHoverEnterAt = now
+		s.lastHoverEnterWasCollapsed = s.collapsed
 		s.expandLocked()
 		return
 	}
@@ -450,6 +484,11 @@ func (s *FloatingBallService) ensureLocked() *application.WebviewWindow {
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar: true,
 			WindowMask:      floatingBallWindowMask(),
+			// Keep the floating ball non-activating (no focus steal) but still clickable/hoverable.
+			// WS_EX_NOACTIVATE = 0x08000000
+			ExStyle: 0x08000000,
+			// Avoid extra shadow/rounded-corner decorations in frameless mode.
+			DisableFramelessWindowDecorations: true,
 		},
 		Mac: application.MacWindow{
 			Backdrop:     application.MacBackdropTransparent,
@@ -474,6 +513,8 @@ func (s *FloatingBallService) ensureLocked() *application.WebviewWindow {
 		if s.win == nil || !s.visible {
 			return
 		}
+		// macOS: ensure hover works even when window is non-activating
+		enableMacHoverTracking(s.win)
 		s.scheduleRepositionLocked()
 	})
 
