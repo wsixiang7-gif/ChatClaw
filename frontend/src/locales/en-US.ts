@@ -198,6 +198,23 @@ export default {
     menu: {
       settings: 'Agent Settings',
       history: 'Chat History',
+      rename: 'Rename',
+      delete: 'Delete',
+    },
+    conversation: {
+      rename: {
+        title: 'Rename Conversation',
+        placeholder: 'Enter a new name',
+        confirm: 'Save',
+        success: 'Renamed',
+      },
+      delete: {
+        title: 'Confirm Delete',
+        desc: 'Delete conversation "{name}"? This action cannot be undone.',
+        cancel: 'Cancel',
+        confirm: 'Delete',
+        success: 'Deleted',
+      },
     },
     errors: {
       loadFailed: 'Failed to load agents',
@@ -206,6 +223,10 @@ export default {
       updateFailed: 'Failed to update agent',
       deleteFailed: 'Failed to delete agent',
       defaultModelIncomplete: 'Default model info is incomplete',
+      loadConversationsFailed: 'Failed to load conversations',
+      createConversationFailed: 'Failed to create conversation',
+      updateConversationFailed: 'Failed to update conversation',
+      deleteConversationFailed: 'Failed to delete conversation',
     },
     toasts: {
       created: 'Agent created',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowUp } from 'lucide-vue-next'
+import { ArrowUp, MoreHorizontal } from 'lucide-vue-next'
 import IconAgentAdd from '@/assets/icons/agent-add.svg'
 import IconNewConversation from '@/assets/icons/new-conversation.svg'
 import IconSidebarCollapse from '@/assets/icons/sidebar-collapse.svg'
@@ -9,6 +9,8 @@ import IconSidebarExpand from '@/assets/icons/sidebar-expand.svg'
 import IconSettings from '@/assets/icons/settings.svg'
 import IconSelectKnowledge from '@/assets/icons/select-knowledge.svg'
 import IconSelectImage from '@/assets/icons/select-image.svg'
+import IconRename from '@/assets/icons/library-rename.svg'
+import IconDelete from '@/assets/icons/library-delete.svg'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
@@ -17,8 +19,15 @@ import LogoIcon from '@/assets/images/logo.svg'
 import { getLogoDataUrl } from '@/composables/useLogo'
 import CreateAgentDialog from './components/CreateAgentDialog.vue'
 import AgentSettingsDialog from './components/AgentSettingsDialog.vue'
+import RenameConversationDialog from './components/RenameConversationDialog.vue'
 import { useNavigationStore } from '@/stores'
 import { AgentsService, type Agent } from '@bindings/willchat/internal/services/agents'
+import {
+  ConversationsService,
+  type Conversation,
+  CreateConversationInput,
+  UpdateConversationInput,
+} from '@bindings/willchat/internal/services/conversations'
 import {
   ProvidersService,
   type ProviderWithModels,
@@ -31,6 +40,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import {
   Select,
@@ -42,14 +52,25 @@ import {
 } from '@/components/ui/select'
 import { ProviderIcon } from '@/components/ui/provider-icon'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type ListMode = 'personal' | 'team'
 
-// Mock chat history data
-interface ChatHistory {
+// Chat message interface
+interface ChatMessage {
   id: number
-  title: string
-  createdAt: string
+  role: 'user' | 'assistant'
+  content: string
+  createdAt: Date
 }
 
 const { t } = useI18n()
@@ -75,21 +96,28 @@ const chatInput = ref('')
 const providersWithModels = ref<ProviderWithModels[]>([])
 const selectedModelKey = ref('')
 
-/**
- * Mock 聊天历史数据
- * TODO: 后续替换为真实的后端 API 调用
- */
-const chatHistories = ref<ChatHistory[]>([
-  { id: 1, title: '如何使用 Vue 3 的 Composition API', createdAt: '2026-02-04T10:30:00' },
-  { id: 2, title: '帮我写一个 Python 爬虫脚本', createdAt: '2026-02-04T09:15:00' },
-  { id: 3, title: '解释一下 TypeScript 的泛型用法', createdAt: '2026-02-03T16:45:00' },
-  { id: 4, title: 'React 和 Vue 的区别是什么', createdAt: '2026-02-03T14:20:00' },
-  { id: 5, title: '数据库索引优化建议', createdAt: '2026-02-02T11:00:00' },
-])
+// Conversations state
+const conversations = ref<Conversation[]>([])
+const activeConversationId = ref<number | null>(null)
+const conversationsLoading = ref(false)
+
+// Chat messages (for display)
+const chatMessages = ref<ChatMessage[]>([])
+let messageIdCounter = 0
+
+// Conversation dialogs
+const renameConversationOpen = ref(false)
+const deleteConversationOpen = ref(false)
+const actionConversation = ref<Conversation | null>(null)
 
 const activeAgent = computed(() => {
   if (activeAgentId.value == null) return null
   return agents.value.find((a) => a.id === activeAgentId.value) ?? null
+})
+
+const activeConversation = computed(() => {
+  if (activeConversationId.value == null) return null
+  return conversations.value.find((c) => c.id === activeConversationId.value) ?? null
 })
 
 const canSend = computed(() => {
@@ -103,19 +131,17 @@ const hasModels = computed(() => {
 })
 
 /**
- * 获取指定助手的聊天历史（最多显示 3 条）
- * TODO: 后续根据 agentId 从后端获取
+ * Get recent conversations for display under agent (max 3)
  */
-const getAgentChatHistories = (_agentId: number): ChatHistory[] => {
-  return chatHistories.value.slice(0, 3)
+const getAgentConversations = (agentId: number): Conversation[] => {
+  return conversations.value.filter((c) => c.agent_id === agentId).slice(0, 3)
 }
 
 /**
- * 获取指定助手的所有聊天历史（用于下拉菜单）
- * TODO: 后续根据 agentId 从后端获取
+ * Get all conversations for a specific agent (for dropdown menu)
  */
-const getAllAgentChatHistories = (_agentId: number): ChatHistory[] => {
-  return chatHistories.value
+const getAllAgentConversations = (agentId: number): Conversation[] => {
+  return conversations.value.filter((c) => c.agent_id === agentId)
 }
 
 const loadAgents = async () => {
@@ -124,15 +150,15 @@ const loadAgents = async () => {
     const list = await AgentsService.ListAgents()
     agents.value = list
 
-    // 尝试恢复当前标签页的选中状态
+    // Try to restore the selected state for current tab
     const currentTabId = navigationStore.activeTabId
     if (currentTabId) {
       const savedAgentId = navigationStore.getTabAgentId(currentTabId)
-      // 检查保存的 agentId 是否仍然有效（助手可能已被删除）
+      // Check if saved agentId is still valid (agent might have been deleted)
       if (savedAgentId !== null && list.some((a) => a.id === savedAgentId)) {
         activeAgentId.value = savedAgentId
       } else if (list.length > 0) {
-        // 没有保存的状态或已失效，选中第一个助手
+        // No saved state or invalid, select first agent
         activeAgentId.value = list[0].id
         navigationStore.updateTabAgentId(currentTabId, list[0].id)
       }
@@ -140,7 +166,7 @@ const loadAgents = async () => {
       activeAgentId.value = list[0].id
     }
 
-    // 初始化时更新标签页图标和标题
+    // Update tab icon and title
     updateCurrentTab()
   } catch (error: unknown) {
     toast.error(getErrorMessage(error) || t('assistant.errors.loadFailed'))
@@ -149,11 +175,27 @@ const loadAgents = async () => {
   }
 }
 
+const loadConversations = async (agentId: number) => {
+  conversationsLoading.value = true
+  try {
+    const list = await ConversationsService.ListConversations(agentId)
+    conversations.value = list || []
+    // Don't auto-select any conversation when loading
+    activeConversationId.value = null
+    chatMessages.value = []
+  } catch (error: unknown) {
+    toast.error(getErrorMessage(error) || t('assistant.errors.loadConversationsFailed'))
+    conversations.value = []
+  } finally {
+    conversationsLoading.value = false
+  }
+}
+
 const loadModels = async () => {
   try {
     const providers = await ProvidersService.ListProviders()
     const enabled = providers.filter((p) => p.enabled)
-    // 并行加载所有 provider 的模型
+    // Load all provider models in parallel
     const results = await Promise.all(
       enabled.map((p) => ProvidersService.GetProviderWithModels(p.provider_id))
     )
@@ -253,20 +295,17 @@ const openSettings = (agent: Agent) => {
 
 const handleUpdated = (updated: Agent) => {
   const idx = agents.value.findIndex((a) => a.id === updated.id)
-  // 获取更新前的助手信息，用于判断默认模型是否发生变化
+  // Get old agent info to check if default model changed
   const oldAgent = idx >= 0 ? agents.value[idx] : null
   const hadDefaultModel = oldAgent?.default_llm_provider_id && oldAgent?.default_llm_model_id
   const hasDefaultModel = updated.default_llm_provider_id && updated.default_llm_model_id
 
   if (idx >= 0) agents.value[idx] = updated
 
-  // 如果更新的是当前选中的助手
+  // If updating the currently selected agent
   if (activeAgentId.value === updated.id) {
     updateCurrentTab()
-    // 判断是否需要同步聊天框的模型选择：
-    // 1. 助手设置了新的默认模型 → 同步到聊天框
-    // 2. 助手的默认模型被清除（从有到无）→ 回退到第一个可用模型
-    // 3. 助手本身就没有默认模型 → 保持聊天框当前选中的模型不变
+    // Sync model selection if default model changed
     if (hasDefaultModel || hadDefaultModel) {
       selectDefaultModel()
     }
@@ -281,12 +320,74 @@ const handleDeleted = (id: number) => {
 }
 
 const handleNewConversation = () => {
-  // TODO: Implement new conversation logic
+  // Just clear the current conversation selection and chat messages
+  // Don't create a conversation record until user sends first message
+  activeConversationId.value = null
+  chatMessages.value = []
+  chatInput.value = ''
 }
 
-const handleSend = () => {
-  if (!canSend.value) return
-  // TODO: Implement send logic
+const handleSend = async () => {
+  if (!canSend.value || !activeAgentId.value) return
+
+  const messageContent = chatInput.value.trim()
+  chatInput.value = ''
+
+  // Add user message to chat display
+  const userMessage: ChatMessage = {
+    id: ++messageIdCounter,
+    role: 'user',
+    content: messageContent,
+    createdAt: new Date(),
+  }
+  chatMessages.value.push(userMessage)
+
+  // If no active conversation, create one
+  if (!activeConversationId.value) {
+    try {
+      const newConversation = await ConversationsService.CreateConversation(
+        new CreateConversationInput({
+          agent_id: activeAgentId.value,
+          name: messageContent, // First message becomes conversation name
+          last_message: messageContent,
+        })
+      )
+      if (newConversation) {
+        conversations.value = [newConversation, ...conversations.value]
+        activeConversationId.value = newConversation.id
+      }
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error) || t('assistant.errors.createConversationFailed'))
+    }
+  } else {
+    // Update existing conversation's last_message and updated_at
+    try {
+      const updated = await ConversationsService.UpdateConversation(
+        activeConversationId.value,
+        new UpdateConversationInput({
+          last_message: messageContent,
+        })
+      )
+      if (updated) {
+        // Update in list and move to top (since updated_at changed)
+        conversations.value = conversations.value.filter((c) => c.id !== updated.id)
+        conversations.value = [updated, ...conversations.value]
+      }
+    } catch (error: unknown) {
+      console.error('Failed to update conversation:', error)
+      // Non-critical error, don't show toast
+    }
+  }
+
+  // TODO: Here you would call the LLM API to get a response
+  // For now, just display the user message
+}
+
+const handleSelectConversation = (conversation: Conversation) => {
+  activeConversationId.value = conversation.id
+  // TODO: Load conversation messages from backend
+  // For now, just clear messages
+  chatMessages.value = []
 }
 
 const handleSelectKnowledge = () => {
@@ -297,36 +398,69 @@ const handleSelectImage = () => {
   // TODO: Implement image selection
 }
 
-const handleSelectHistory = (history: ChatHistory) => {
-  // TODO: Implement history selection
-  void history
+// Conversation menu actions
+const handleOpenRenameConversation = (conv: Conversation) => {
+  actionConversation.value = conv
+  renameConversationOpen.value = true
+}
+
+const handleOpenDeleteConversation = (conv: Conversation) => {
+  actionConversation.value = conv
+  deleteConversationOpen.value = true
+}
+
+const handleConversationUpdated = (updated: Conversation) => {
+  conversations.value = conversations.value.map((c) => (c.id === updated.id ? updated : c))
+}
+
+const confirmDeleteConversation = async () => {
+  if (!actionConversation.value) return
+  try {
+    await ConversationsService.DeleteConversation(actionConversation.value.id)
+    conversations.value = conversations.value.filter((c) => c.id !== actionConversation.value?.id)
+    if (activeConversationId.value === actionConversation.value.id) {
+      activeConversationId.value = null
+      chatMessages.value = []
+    }
+    toast.success(t('assistant.conversation.delete.success'))
+    deleteConversationOpen.value = false
+  } catch (error) {
+    console.error('Failed to delete conversation:', error)
+    toast.error(getErrorMessage(error) || t('assistant.errors.deleteConversationFailed'))
+  }
 }
 
 /**
- * 更新当前标签页的图标和标题为选中助手的信息
- * - 图标：如果助手没有自定义图标，则使用默认的 logo 图标
- * - 标题：使用助手名称，如果没有选中助手则使用默认标题
+ * Update current tab's icon and title to match selected agent
  */
 const updateCurrentTab = () => {
   const currentTabId = navigationStore.activeTabId
   if (!currentTabId) return
 
   const agent = activeAgent.value
-  // 如果助手有自定义图标则使用，否则使用 logo 作为默认图标
+  // Use agent's custom icon or default logo
   const icon = agent?.icon || getLogoDataUrl()
   navigationStore.updateTabIcon(currentTabId, icon, { isDefault: !agent?.icon })
-  // 使用助手名称作为标签页标题，没有选中时清除自定义标题（回退到 titleKey）
+  // Use agent name as tab title
   navigationStore.updateTabTitle(currentTabId, agent?.name)
 }
 
-// Watch for active agent changes to update selected model, tab info, and save to tab state
+// Watch for active agent changes to update selected model, tab info, and load conversations
 watch(activeAgentId, (newAgentId) => {
   selectDefaultModel()
   updateCurrentTab()
-  // 保存选中状态到当前标签页
+  // Save selected state to current tab
   const currentTabId = navigationStore.activeTabId
   if (currentTabId) {
     navigationStore.updateTabAgentId(currentTabId, newAgentId)
+  }
+  // Load conversations for the new agent
+  if (newAgentId) {
+    loadConversations(newAgentId)
+  } else {
+    conversations.value = []
+    activeConversationId.value = null
+    chatMessages.value = []
   }
 })
 
@@ -341,19 +475,19 @@ watch(
   (newTabId) => {
     // Only process if the current tab is an assistant module
     if (navigationStore.activeTab?.module === 'assistant' && newTabId) {
-      // 恢复该标签页的选中助手
+      // Restore selected agent for this tab
       const savedAgentId = navigationStore.getTabAgentId(newTabId)
       if (savedAgentId !== null && agents.value.some((a) => a.id === savedAgentId)) {
-        // 有保存的状态且助手仍存在，恢复选中
+        // Has saved state and agent still exists
         if (activeAgentId.value !== savedAgentId) {
           activeAgentId.value = savedAgentId
         }
       } else if (agents.value.length > 0) {
-        // 新标签页或保存的助手已被删除，选中第一个
+        // New tab or saved agent deleted, select first
         activeAgentId.value = agents.value[0].id
         navigationStore.updateTabAgentId(newTabId, agents.value[0].id)
       }
-      // 更新图标和标题
+      // Update icon and title
       updateCurrentTab()
     }
   }
@@ -367,7 +501,7 @@ onMounted(() => {
 
 <template>
   <div class="flex h-full w-full overflow-hidden bg-background">
-    <!-- 左侧：助手列表 -->
+    <!-- Left side: Agent list -->
     <aside
       :class="
         cn(
@@ -447,20 +581,20 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- 操作按钮：收紧加号和设置按钮间距 -->
+              <!-- Action buttons -->
               <div class="flex items-center gap-0">
-                <!-- 新会话按钮 -->
+                <!-- New conversation button -->
                 <Button
                   size="icon"
                   variant="ghost"
                   class="size-7 opacity-0 group-hover:opacity-100 hover:bg-muted/60 dark:hover:bg-white/10"
                   :title="t('assistant.sidebar.newConversation')"
-                  @click.stop="handleNewConversation"
+                  @click.stop="activeAgentId = a.id; handleNewConversation()"
                 >
                   <IconNewConversation class="size-4 text-muted-foreground" />
                 </Button>
 
-                <!-- 设置下拉菜单 -->
+                <!-- Settings dropdown -->
                 <DropdownMenu>
                   <DropdownMenuTrigger as-child>
                     <Button
@@ -482,13 +616,13 @@ onMounted(() => {
                         {{ t('assistant.menu.history') }}
                       </DropdownMenuSubTrigger>
                       <DropdownMenuSubContent class="w-56">
-                        <template v-if="getAllAgentChatHistories(a.id).length > 0">
+                        <template v-if="getAllAgentConversations(a.id).length > 0">
                           <DropdownMenuItem
-                            v-for="history in getAllAgentChatHistories(a.id)"
-                            :key="history.id"
-                            @click="handleSelectHistory(history)"
+                            v-for="conv in getAllAgentConversations(a.id)"
+                            :key="conv.id"
+                            @click="activeAgentId = a.id; handleSelectConversation(conv)"
                           >
-                            <span class="truncate">{{ history.title }}</span>
+                            <span class="truncate">{{ conv.name }}</span>
                           </DropdownMenuItem>
                         </template>
                         <DropdownMenuItem v-else disabled>
@@ -501,26 +635,59 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Chat history list (max 3 items) - only show for active agent -->
+            <!-- Conversation list (max 3 items) - only show for active agent -->
             <div
-              v-if="a.id === activeAgentId && getAgentChatHistories(a.id).length > 0"
-              class="mt-1 flex flex-col gap-1"
+              v-if="a.id === activeAgentId && getAgentConversations(a.id).length > 0"
+              class="mt-1 flex flex-col gap-0.5"
             >
-              <button
-                v-for="history in getAgentChatHistories(a.id)"
-                :key="history.id"
-                class="truncate rounded px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-                @click="handleSelectHistory(history)"
+              <div
+                v-for="conv in getAgentConversations(a.id)"
+                :key="conv.id"
+                :class="
+                  cn(
+                    'group flex items-center gap-1 rounded px-2 py-1.5 text-left text-sm transition-colors',
+                    activeConversationId === conv.id
+                      ? 'bg-accent/60 text-foreground'
+                      : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                  )
+                "
+                role="button"
+                tabindex="0"
+                @click="handleSelectConversation(conv)"
+                @keydown.enter.prevent="handleSelectConversation(conv)"
               >
-                {{ history.title }}
-              </button>
+                <span class="min-w-0 flex-1 truncate">{{ conv.name }}</span>
+                <!-- Conversation menu -->
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-background/60 hover:text-foreground group-hover:opacity-100"
+                    @click.stop
+                  >
+                    <MoreHorizontal class="size-3.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" class="w-36">
+                    <DropdownMenuItem class="gap-2" @select="handleOpenRenameConversation(conv)">
+                      <IconRename class="size-4 text-muted-foreground" />
+                      {{ t('assistant.menu.rename') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      class="gap-2 text-destructive focus:text-destructive"
+                      @select="handleOpenDeleteConversation(conv)"
+                    >
+                      <IconDelete class="size-4" />
+                      {{ t('assistant.menu.delete') }}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </aside>
 
-    <!-- 收起/展开按钮 -->
+    <!-- Collapse/Expand button -->
     <div class="flex w-8 shrink-0 items-center justify-center">
       <Button
         size="icon"
@@ -534,11 +701,52 @@ onMounted(() => {
       </Button>
     </div>
 
-    <!-- 右侧：聊天区 -->
+    <!-- Right side: Chat area -->
     <section class="flex flex-1 flex-col overflow-hidden">
-      <div class="flex flex-1 items-center justify-center px-6">
-        <div class="flex w-full -translate-y-10 flex-col items-center gap-10">
-          <div class="flex items-center gap-3">
+      <!-- Chat messages area -->
+      <div
+        v-if="chatMessages.length > 0"
+        class="flex-1 overflow-auto px-6 py-4"
+      >
+        <div class="mx-auto max-w-[800px] flex flex-col gap-4">
+          <div
+            v-for="msg in chatMessages"
+            :key="msg.id"
+            :class="cn(
+              'flex',
+              msg.role === 'user' ? 'justify-end' : 'justify-start'
+            )"
+          >
+            <div
+              :class="cn(
+                'max-w-[80%] rounded-2xl px-4 py-3 text-sm',
+                msg.role === 'user'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground'
+              )"
+            >
+              <p class="whitespace-pre-wrap wrap-break-word">{{ msg.content }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state / Input area -->
+      <div
+        :class="cn(
+          'flex px-6',
+          chatMessages.length > 0
+            ? 'pb-4'
+            : 'flex-1 items-center justify-center'
+        )"
+      >
+        <div
+          :class="cn(
+            'flex w-full flex-col items-center gap-10',
+            chatMessages.length === 0 && '-translate-y-10'
+          )"
+        >
+          <div v-if="chatMessages.length === 0" class="flex items-center gap-3">
             <LogoIcon class="size-10 text-foreground" />
             <div class="text-2xl font-semibold text-foreground">
               {{ t('app.title') }}
@@ -659,5 +867,34 @@ onMounted(() => {
       @updated="handleUpdated"
       @deleted="handleDeleted"
     />
+
+    <!-- Conversation dialogs -->
+    <RenameConversationDialog
+      v-model:open="renameConversationOpen"
+      :conversation="actionConversation"
+      @updated="handleConversationUpdated"
+    />
+
+    <AlertDialog v-model:open="deleteConversationOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ t('assistant.conversation.delete.title') }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ t('assistant.conversation.delete.desc', { name: actionConversation?.name }) }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>
+            {{ t('assistant.conversation.delete.cancel') }}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            @click.prevent="confirmDeleteConversation"
+          >
+            {{ t('assistant.conversation.delete.confirm') }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

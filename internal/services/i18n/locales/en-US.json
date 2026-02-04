@@ -89,5 +89,14 @@
   "error.agent_icon_read_failed": "failed to read icon file",
   "error.agent_icon_invalid": "invalid icon file",
   "error.agent_icon_too_large": "icon file is too large (max 100KB)",
-  "error.agent_icon_type_not_allowed": "icon file type is not allowed"
+  "error.agent_icon_type_not_allowed": "icon file type is not allowed",
+
+  "error.conversation_id_required": "conversation ID is required",
+  "error.conversation_not_found": "conversation '{{.ID}}' not found",
+  "error.conversation_list_failed": "failed to list conversations",
+  "error.conversation_read_failed": "failed to read conversation",
+  "error.conversation_create_failed": "failed to create conversation",
+  "error.conversation_update_failed": "failed to update conversation",
+  "error.conversation_delete_failed": "failed to delete conversation",
+  "error.conversation_name_required": "conversation name is required"
 }
