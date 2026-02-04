@@ -154,9 +154,8 @@ const handleAddDocument = async () => {
         file_paths: result,
       })
 
-      // 添加到列表
-      const newDocs = uploaded.map(convertDocument)
-      documents.value = [...newDocs, ...documents.value]
+      // 重新加载列表（因为重复文件会覆盖旧记录）
+      await loadDocuments()
 
       toast.success(t('knowledge.content.upload.count', { count: uploaded.length }))
     }

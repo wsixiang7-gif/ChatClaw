@@ -199,7 +199,7 @@ const FileIcon = computed(() => {
 
     <!-- 标题 -->
     <p
-      class="mx-[7px] mt-[8px] line-clamp-2 h-[44px] text-center text-sm leading-[22px] text-foreground"
+      class="mx-[7px] mt-[8px] line-clamp-2 h-[44px] text-left text-sm leading-[22px] text-foreground"
       :title="document.name"
     >
       {{ document.name }}
