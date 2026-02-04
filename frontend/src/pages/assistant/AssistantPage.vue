@@ -501,6 +501,17 @@ watch(providersWithModels, () => {
   selectDefaultModel()
 })
 
+// 当前标签页是否激活
+const isTabActive = computed(() => navigationStore.activeTabId === props.tabId)
+
+// 监听标签页激活状态，激活时刷新模型列表
+// 这样用户在设置页面启用模型后，切换回聊天页面时能看到最新的模型
+watch(isTabActive, (active) => {
+  if (active) {
+    loadModels()
+  }
+})
+
 onMounted(() => {
   loadAgents()
   loadModels()
