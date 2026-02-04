@@ -321,7 +321,7 @@ export default {
       },
       empty: {
         title: 'No documents yet',
-        desc: 'Click the button above to add documents to the knowledge base',
+        desc: 'Supports PDF, Word, Excel, TXT, Markdown, CSV, HTML, OFD formats',
       },
       status: {
         completed: 'Completed',

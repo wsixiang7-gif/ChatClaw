@@ -63,10 +63,13 @@ const STATUS_FAILED = 3
 const convertDocument = (doc: BackendDocument): Document => {
   let status: DocumentStatus = 'pending'
   let progress = 0
+  let errorMessage = ''
 
   // 根据解析和嵌入状态确定整体状态
   if (doc.parsing_status === STATUS_FAILED || doc.embedding_status === STATUS_FAILED) {
     status = 'failed'
+    // 提取错误信息
+    errorMessage = doc.parsing_error || doc.embedding_error || ''
   } else if (doc.embedding_status === STATUS_COMPLETED) {
     status = 'completed'
   } else if (doc.embedding_status === STATUS_PROCESSING) {
@@ -87,6 +90,7 @@ const convertDocument = (doc: BackendDocument): Document => {
     createdAt: doc.created_at,
     status,
     progress,
+    errorMessage,
   }
 }
 
@@ -234,9 +238,11 @@ onMounted(() => {
     // 更新文档状态
     let status: DocumentStatus = 'pending'
     let progressValue = 0
+    let errorMessage = ''
 
     if (progress.parsing_status === STATUS_FAILED || progress.embedding_status === STATUS_FAILED) {
       status = 'failed'
+      errorMessage = progress.parsing_error || progress.embedding_error || ''
     } else if (progress.embedding_status === STATUS_COMPLETED) {
       status = 'completed'
     } else if (progress.embedding_status === STATUS_PROCESSING) {
@@ -254,6 +260,7 @@ onMounted(() => {
       ...documents.value[index],
       status,
       progress: progressValue,
+      errorMessage,
     }
   })
 })

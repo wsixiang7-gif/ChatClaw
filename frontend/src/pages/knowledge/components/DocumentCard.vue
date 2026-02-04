@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { MoreHorizontal, FileText, CheckCircle2, Loader2, XCircle } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
@@ -32,6 +32,7 @@ export interface Document {
   status: DocumentStatus
   progress?: number
   thumbnailUrl?: string
+  errorMessage?: string
 }
 
 const props = defineProps<{
@@ -139,11 +140,14 @@ const FileIcon = computed(() => {
       return FileText
   }
 })
+
+// 错误提示显示状态
+const showErrorTip = ref(false)
 </script>
 
 <template>
   <div
-    class="group relative flex h-[182px] w-[166px] flex-col overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-md dark:hover:shadow-none dark:hover:ring-1 dark:hover:ring-white/10"
+    class="group relative flex h-[182px] w-[166px] flex-col rounded-xl border border-border bg-card transition-shadow hover:shadow-md dark:hover:shadow-none dark:hover:ring-1 dark:hover:ring-white/10"
   >
     <!-- 缩略图区域 -->
     <div class="relative mx-[7px] mt-[7px] h-[86px] w-[150px] overflow-hidden rounded-md border border-border bg-muted">
@@ -160,17 +164,30 @@ const FileIcon = computed(() => {
     <!-- 状态徽章 -->
     <div
       v-if="statusConfig.show"
-      :class="cn(
-        'absolute left-[11px] top-[11px] flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium',
-        statusConfig.class
-      )"
+      class="absolute left-[11px] top-[11px]"
+      @mouseenter="document.status === 'failed' && document.errorMessage && (showErrorTip = true)"
+      @mouseleave="showErrorTip = false"
     >
-      <component
-        :is="statusConfig.icon"
-        v-if="statusConfig.icon"
-        :class="cn('size-3.5', statusConfig.iconClass)"
-      />
-      {{ statusConfig.label }}
+      <div
+        :class="cn(
+          'flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium',
+          statusConfig.class
+        )"
+      >
+        <component
+          :is="statusConfig.icon"
+          v-if="statusConfig.icon"
+          :class="cn('size-3.5', statusConfig.iconClass)"
+        />
+        {{ statusConfig.label }}
+      </div>
+      <!-- 失败原因浮层提示 -->
+      <div
+        v-if="showErrorTip && document.errorMessage"
+        class="absolute bottom-full left-0 z-50 mb-1 w-max max-w-[300px] whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1.5 text-xs text-popover-foreground shadow-md"
+      >
+        {{ document.errorMessage }}
+      </div>
     </div>
 
     <!-- 悬停菜单按钮 -->

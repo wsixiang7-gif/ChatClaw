@@ -319,7 +319,7 @@ export default {
       },
       empty: {
         title: '暂无文档',
-        desc: '点击上方按钮添加文档到知识库',
+        desc: '支持 PDF、Word、Excel、TXT、Markdown、CSV、HTML、OFD 格式',
       },
       status: {
         completed: '学习完成',
