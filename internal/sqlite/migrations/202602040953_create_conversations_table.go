@@ -18,6 +18,7 @@ create table if not exists conversations (
 	agent_id integer not null,
 	name text not null,
 	last_message text not null,
+	is_pinned boolean not null default false,
 	is_deleted boolean not null default false
 );
 create index if not exists idx_conversations_agent_id on conversations(agent_id, updated_at desc) where is_deleted = 0;
