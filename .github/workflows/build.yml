@@ -1,0 +1,157 @@
+name: Build ChatClaw
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install MSYS2 (for CGO/SQLite)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-sqlite3
+
+      - name: Add MSYS2 to PATH
+        run: echo "C:\msys64\ucrt64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Install frontend dependencies
+        run: npm install
+        working-directory: frontend
+
+      - name: Generate bindings
+        run: wails3 generate bindings -f '-tags fts5 -buildvcs=false' -clean=true -ts
+
+      - name: Generate icons
+        run: wails3 generate icons -input build/appicon.png -macfilename build/darwin/icons.icns -windowsfilename build/windows/icon.ico
+
+      - name: Generate syso
+        run: wails3 generate syso -arch amd64 -icon build/windows/icon.ico -manifest build/windows/wails.exe.manifest -info build/windows/info.json -out wails_windows_amd64.syso
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Build Windows binary
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: 1
+        run: go build -tags "production fts5" -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui" -o bin/ChatClaw.exe
+
+      - name: Install NSIS
+        run: choco install nsis -y
+
+      - name: Create NSIS installer
+        run: |
+          wails3 generate webview2bootstrapper -dir "build/windows/nsis"
+          cd build/windows/nsis
+          makensis -DARG_WAILS_AMD64_BINARY="${{ github.workspace }}\bin\ChatClaw.exe" project.nsi
+
+      - name: Upload Windows exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChatClaw-windows-amd64
+          path: bin/ChatClaw.exe
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChatClaw-windows-installer
+          path: build/windows/nsis/ChatClaw-*installer.exe
+          if-no-files-found: warn
+
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Wails3 CLI
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+
+      - name: Install frontend dependencies
+        run: npm install
+        working-directory: frontend
+
+      - name: Generate bindings
+        run: wails3 generate bindings -f '-tags fts5 -buildvcs=false' -clean=true -ts
+
+      - name: Generate icons
+        run: wails3 generate icons -input build/appicon.png -macfilename build/darwin/icons.icns -windowsfilename build/windows/icon.ico
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
+      - name: Build macOS binary (arm64)
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+          CGO_ENABLED: 1
+          CGO_CFLAGS: "-mmacosx-version-min=10.15"
+          CGO_LDFLAGS: "-mmacosx-version-min=10.15"
+          MACOSX_DEPLOYMENT_TARGET: "10.15"
+        run: go build -tags "production fts5" -trimpath -buildvcs=false -ldflags="-w -s" -o bin/ChatClaw
+
+      - name: Package .app bundle
+        run: |
+          mkdir -p bin/ChatClaw.app/Contents/MacOS
+          mkdir -p bin/ChatClaw.app/Contents/Resources
+          cp build/darwin/icons.icns bin/ChatClaw.app/Contents/Resources/
+          cp bin/ChatClaw bin/ChatClaw.app/Contents/MacOS/
+          cp build/darwin/Info.plist bin/ChatClaw.app/Contents/
+          codesign --force --deep --sign - bin/ChatClaw.app
+
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          create-dmg \
+            --volname "ChatClaw" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "ChatClaw.app" 150 185 \
+            --app-drop-link 450 185 \
+            "bin/ChatClaw-arm64.dmg" \
+            "bin/ChatClaw.app" || true
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChatClaw-macos-arm64
+          path: bin/ChatClaw-arm64.dmg
+          if-no-files-found: warn
+
+      - name: Upload macOS app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChatClaw-macos-app
+          path: bin/ChatClaw.app/**
