@@ -50,6 +50,12 @@ jobs:
         run: npm run build
         working-directory: frontend
 
+      - name: Copy sqlite3.h for sqlite-vec CGO
+        run: |
+          $vecDir = "$(go env GOPATH)\pkg\mod\github.com\asg017\sqlite-vec-go-bindings@v0.1.7-alpha.2\cgo"
+          Copy-Item "C:\msys64\ucrt64\include\sqlite3.h" "$vecDir\sqlite3.h" -ErrorAction SilentlyContinue
+          Copy-Item "C:\msys64\ucrt64\include\sqlite3ext.h" "$vecDir\sqlite3ext.h" -ErrorAction SilentlyContinue
+
       - name: Build Windows binary
         env:
           GOOS: windows
