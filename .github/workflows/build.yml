@@ -31,18 +31,11 @@ jobs:
           node-version: '24'
 
       - name: Install Wails3 CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@latest
-
-      - name: Verify environment
         run: |
-          echo "=== GCC ==="
-          which gcc && gcc --version | head -1
-          echo "=== Go ==="
-          go version
-          echo "=== sqlite3.h ==="
-          ls -la /ucrt64/include/sqlite3.h
-          echo "=== wails3 ==="
-          which wails3
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          go install github.com/wailsapp/wails/v3/cmd/wails3@latest
+          # Symlink wails3 to MSYS2 bin so all steps can find it
+          cp "$(go env GOPATH)/bin/wails3.exe" /ucrt64/bin/wails3.exe
 
       - name: Install frontend dependencies
         shell: pwsh
@@ -70,29 +63,22 @@ jobs:
           CGO_ENABLED: 1
         run: go build -tags "production fts5" -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui" -o bin/ChatClaw.exe
 
-      - name: Install NSIS
-        shell: pwsh
-        run: choco install nsis -y
-
-      - name: Create NSIS installer
-        shell: pwsh
-        run: |
-          wails3 generate webview2bootstrapper -dir "build/windows/nsis"
-          cd build/windows/nsis
-          makensis -DARG_WAILS_AMD64_BINARY="${{ github.workspace }}\bin\ChatClaw.exe" project.nsi
-
       - name: Upload Windows exe
         uses: actions/upload-artifact@v4
         with:
           name: ChatClaw-windows-amd64
           path: bin/ChatClaw.exe
 
-      - name: Upload Windows installer
+      - name: Create zip for distribution
+        run: |
+          cd bin
+          zip ChatClaw_windows_amd64.zip ChatClaw.exe
+
+      - name: Upload Windows zip
         uses: actions/upload-artifact@v4
         with:
-          name: ChatClaw-windows-installer
-          path: build/windows/nsis/ChatClaw-*installer.exe
-          if-no-files-found: warn
+          name: ChatClaw-windows-amd64-zip
+          path: bin/ChatClaw_windows_amd64.zip
 
   build-macos:
     runs-on: macos-14
