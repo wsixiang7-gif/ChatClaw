@@ -50,11 +50,20 @@ jobs:
         run: npm run build
         working-directory: frontend
 
+      - name: Verify MSYS2 GCC
+        run: |
+          echo "GCC path:"
+          Get-Command gcc | Select-Object -ExpandProperty Source
+          gcc --version
+          echo "sqlite3.h location:"
+          Get-ChildItem -Recurse "C:\msys64\ucrt64\include\sqlite3.h" -ErrorAction SilentlyContinue
+
       - name: Build Windows binary
         env:
           GOOS: windows
           GOARCH: amd64
           CGO_ENABLED: 1
+          CC: "C:/msys64/ucrt64/bin/gcc.exe"
           CGO_CFLAGS: "-IC:/msys64/ucrt64/include"
           CGO_LDFLAGS: "-LC:/msys64/ucrt64/lib"
           C_INCLUDE_PATH: "C:/msys64/ucrt64/include"
