@@ -55,6 +55,8 @@ jobs:
           GOOS: windows
           GOARCH: amd64
           CGO_ENABLED: 1
+          CGO_CFLAGS: "-IC:/msys64/ucrt64/include"
+          CGO_LDFLAGS: "-LC:/msys64/ucrt64/lib"
         run: go build -tags "production fts5" -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui" -o bin/ChatClaw.exe
 
       - name: Install NSIS
